@@ -65,7 +65,7 @@ struct SessionListView: View {
                     ForEach(standaloneLocations) { location in
                         NavigationLink(destination: MapView(
                             locationsToDisplay: [location],
-                            mapTitle: "Gespeicherter Ort"
+                            mapTitle: location.comment ?? "Gespeicherter Ort"
                         )) {
                             VStack(alignment: .leading) {
                                 Text("Breite: \(location.latitude), Länge: \(location.longitude)")
