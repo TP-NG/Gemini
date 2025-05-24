@@ -130,6 +130,8 @@ struct LiveLocationView: View {
         newSession.startTime = Date()
         currentSession = newSession
 
+        locationManager.start() // 📍 Damit GPS wirklich startet
+        
         autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
             if let currentLocation = locationManager.currentLocation {
                 saveCurrentLocation(location: currentLocation)
@@ -143,6 +145,8 @@ struct LiveLocationView: View {
         
         autoSaveTimer?.invalidate()
         autoSaveTimer = nil
+        
+        locationManager.stop() // ← Wichtig!
         
         do {
             try viewContext.save()

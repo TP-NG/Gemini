@@ -12,10 +12,15 @@ class LiveLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate
     @Published var currentLocation: CLLocation?
     @Published var region: MKCoordinateRegion?
 
+    private var isUpdating = false
+    
     override init() {
         super.init()
         self.locationManager.delegate = self
         self.locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
     }
 
     func requestLocationUpdatesIfAuthorized() {
@@ -54,4 +59,16 @@ class LiveLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate
             break
         }
     }
+    
+    func start() {
+        guard !isUpdating else { return }
+        locationManager.startUpdatingLocation()
+        isUpdating = true
+    }
+
+    func stop() {
+        locationManager.stopUpdatingLocation()
+        isUpdating = false
+    }
+
 }
