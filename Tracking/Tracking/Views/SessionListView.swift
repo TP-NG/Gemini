@@ -27,8 +27,36 @@ struct SessionListView: View {
                             locationsToDisplay: session.locationsArray,
                             mapTitle: session.name ?? "Session Details"
                         )) {
-                            Text(session.name ?? "Unbenannte Session")
+                            VStack(alignment: .leading) {
+                                Text(session.name ?? "Unbenannte Session")
+                                
+                                if let date = session.startTime {
+                                    Text(date.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                            }
                         }
+                        .swipeActions(edge: .trailing) {
+                          
+                                Button {
+                                    // Hier könntest du später eine Logik einfügen, um z. B. ein Sheet zu öffnen
+                                    print("Details anzeigen für Session: \(session.name ?? "Unbenannt")")
+                                } label: {
+                                    Label("Details", systemImage: "info.circle")
+                                }
+                                .tint(.blue)
+                                
+                                Button(role: .destructive) {
+                                    // Löschen der Einträge über deleteSessions
+                                    if let index = sessions.firstIndex(of: session) {
+                                        deleteSessions(offsets: IndexSet(integer: index))
+                                    }
+                                } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
+                        
                     }
                     .onDelete(perform: deleteSessions) // Swipe zum Löschen für Sessions
                 }
@@ -61,11 +89,30 @@ struct SessionListView: View {
                                 }
                             }
                         }
+                        .swipeActions(edge: .trailing) {
+                            
+                                Button {
+                                    // Hier kannst du später eine Detailanzeige einfügen
+                                    print("Details anzeigen für Standort: \(location.latitude), \(location.longitude)")
+                                } label: {
+                                    Label("Details", systemImage: "info.circle")
+                                }
+                                .tint(.blue)
+                                
+                                Button(role: .destructive) {
+                                    if let index = standaloneLocations.firstIndex(of: location) {
+                                        deleteStandaloneLocations(offsets: IndexSet(integer: index))
+                                    }
+                                } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
+                        
                     }
                     .onDelete(perform: deleteStandaloneLocations) // Swipe zum Löschen für einzelne Orte
                 }
             }
-            .navigationTitle("Gespeicherte Orte & Routen")
+            //.navigationTitle("Gespeicherte Orte & Routen")
         }
     }
 

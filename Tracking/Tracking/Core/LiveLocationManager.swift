@@ -28,7 +28,7 @@ class LiveLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let latestLocation = locations.first else { return }
+        guard let latestLocation = locations.last else { return }
         DispatchQueue.main.async {
             self.currentLocation = latestLocation
             self.region = MKCoordinateRegion(

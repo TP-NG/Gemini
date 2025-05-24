@@ -20,6 +20,8 @@ struct LiveLocationView: View {
     
     @State private var showCamera = false
     
+    @State private var autoSaveTimer: Timer?
+    
     var body: some View {
         VStack {
             // MARK: GPS-Werte anzeigen
@@ -35,7 +37,7 @@ struct LiveLocationView: View {
                     Text(String(format: "%.6f", locationManager.currentLocation?.coordinate.longitude ?? 0.0))
                 }
                 
-                // 🔽 NEUER BUTTON HIER:
+                // Single Point
                 Button(action: {
                     if let currentLocation = locationManager.currentLocation {
                         saveCurrentLocation(location: currentLocation)
@@ -118,8 +120,7 @@ struct LiveLocationView: View {
         .sheet(isPresented: $showCamera) {
             ImagePicker(selectedImage: $previewImage)
         }
-        .hideKeyboardOnTap()
-        
+        .hideKeyboardOnTap()        
         
     }
 
@@ -129,14 +130,20 @@ struct LiveLocationView: View {
         newSession.startTime = Date()
         currentSession = newSession
 
-        if let currentLocation = locationManager.currentLocation {
-            saveCurrentLocation(location: currentLocation)
+        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
+            if let currentLocation = locationManager.currentLocation {
+                saveCurrentLocation(location: currentLocation)
+            }
         }
     }
 
     private func endCurrentTrackingSession() {
         currentSession?.endTime = Date()
         currentSession = nil
+        
+        autoSaveTimer?.invalidate()
+        autoSaveTimer = nil
+        
         do {
             try viewContext.save()
         } catch {
@@ -159,19 +166,24 @@ struct LiveLocationView: View {
         if let session = currentSession {
             newLocation.isStandalone = false
             session.addToLocations(newLocation)
-            currentSession?.name = comment // 💡 direkt auf die Eigenschaft zugreifen
+            if currentSession?.name == nil || currentSession?.name?.isEmpty == true {
+                currentSession?.name = comment
+            }
         } else {
             newLocation.isStandalone = true
         }
 
         do {
             try viewContext.save()
-            print("✅ Einzelpunkt gespeichert.")
-           
-            comment = ""
-            previewImage = nil
+            
+            if currentSession != nil {
+                print("✅ Punkt in Session gespeichert.")
+            } else {
+                print("✅ Einzelpunkt gespeichert.")
+            }
         } catch {
             print("Fehler beim Speichern des Standorts: \(error)")
         }
     }
+    
 }
