@@ -24,7 +24,7 @@ struct AuswertungView: View {
                     
                     // Metriken vor der Anzeige aktualisieren
                     ZusammenfassungView(sessions: filteredSessions.map { session in
-                        session.optimizedUpdateMetrics()
+                        session.updateMetrics()
                         return session
                     })
                     
@@ -235,6 +235,12 @@ struct ZusammenfassungView: View {
     }
     
     private var formattedSpeed: String {
-        String(format: "%.1f km/h", averageSpeed * 3.6)
+        
+        print("""
+        Test-Ergebnisse:
+        - averageSpeed: \(averageSpeed)m
+        """)
+        
+        return String(format: "%.1f km/h", averageSpeed * 3.6)
     }
 }

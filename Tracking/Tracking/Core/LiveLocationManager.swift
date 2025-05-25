@@ -70,5 +70,13 @@ class LiveLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate
         locationManager.stopUpdatingLocation()
         isUpdating = false
     }
+    
+    func startUpdatingLocation() {
+        self.locationManager.startUpdatingLocation()
+    }
+
+    func stopUpdatingLocation() {
+        self.locationManager.stopUpdatingLocation()
+    }
 
 }

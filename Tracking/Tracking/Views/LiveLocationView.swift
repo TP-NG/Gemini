@@ -7,6 +7,8 @@ import SwiftUI
 import CoreLocation
 import MapKit
 import CoreData
+// Vibration beim Pausieren/Fortsetzen (optional)
+import AudioToolbox
 
 struct LiveLocationView: View {
     @StateObject var locationManager = LiveLocationManager()
@@ -21,6 +23,13 @@ struct LiveLocationView: View {
     @State private var showCamera = false
     
     @State private var autoSaveTimer: Timer?
+    
+    @State private var interval: Double = 10
+    
+    @State private var elapsedTime: Double = 0
+    @State private var progressTimer: Timer? = nil
+    
+    @State private var isTrackingPaused = false
     
     var body: some View {
         VStack {
@@ -67,12 +76,23 @@ struct LiveLocationView: View {
             
             
             // MARK: Tracking-Steuerung
+            // Intervall
+            VStack(alignment: .leading) {
+                Text("Intervall (Sekunden): \(Int(interval))")
+                Slider(value: $interval, in: 5...30, step: 1)
+            }
+            .padding(.horizontal)
+            
             HStack {
                 Button(action: {
                     isTrackingActive.toggle()
                     if isTrackingActive {
+                        // Start Timer
+                        startProgressTimer()
+                    
                         startNewTrackingSession()
                     } else {
+                        progressTimer?.invalidate()
                         endCurrentTrackingSession()
                     }
                 }) {
@@ -80,15 +100,31 @@ struct LiveLocationView: View {
                 }
                 .padding()
                 
-                if isTrackingActive, let currentLocation = locationManager.currentLocation {
+                if isTrackingActive {
+                    // Pause / Continue
                     Button(action: {
-                        saveCurrentLocation(location: currentLocation)
+                        // progressTimer pausieren oder weiter
+                        withAnimation(.spring()) {
+                            isTrackingPaused.toggle()
+                        }
+                        if isTrackingPaused {
+                            progressTimer?.invalidate() // Timer pausieren
+                            locationManager.stopUpdatingLocation() // Standortupdates stoppen
+                        } else {
+                            startProgressTimer() // Timer neu starten
+                            locationManager.startUpdatingLocation() // Standortupdates fortsetzen
+                        }
                     }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.largeTitle)
+                        Image(systemName: isTrackingPaused ? "play.circle.fill" : "pause.circle.fill")
+                                .symbolEffect(.bounce, value: isTrackingPaused)
+                                .contentTransition(.symbolEffect(.replace))
                     }
                     .padding()
                 }
+            }
+            
+            if isTrackingActive {
+                LocationProgressView(current: elapsedTime, total: interval)
             }
             
             // Kamera Button + Vorschau
@@ -120,8 +156,19 @@ struct LiveLocationView: View {
         .sheet(isPresented: $showCamera) {
             ImagePicker(selectedImage: $previewImage)
         }
-        .hideKeyboardOnTap()        
+        .hideKeyboardOnTap()
         
+    }
+    
+    private func startProgressTimer() {
+        progressTimer?.invalidate() // Sicherheitshalber vorhandenen Timer stoppen
+        elapsedTime = 0
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            elapsedTime += 1
+            if elapsedTime >= interval {
+                elapsedTime = 0
+            }
+        }
     }
 
     private func startNewTrackingSession() {
@@ -150,7 +197,7 @@ struct LiveLocationView: View {
         locationManager.stop() // ← Wichtig!
         
         do {
-            currentSession?.optimizedUpdateMetrics() // ✅ Neue Berechnung
+            currentSession?.updateMetrics() // ✅ Neue Berechnung
             try viewContext.save()
             print("✅ Session beendet und Daten gespeichert.")
         } catch {
