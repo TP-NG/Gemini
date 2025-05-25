@@ -150,7 +150,7 @@ struct LiveLocationView: View {
         locationManager.stop() // ← Wichtig!
         
         do {
-            currentSession?.updateMetrics() // ✅ Neue Berechnung
+            currentSession?.optimizedUpdateMetrics() // ✅ Neue Berechnung
             try viewContext.save()
             print("✅ Session beendet und Daten gespeichert.")
         } catch {
