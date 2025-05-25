@@ -11,11 +11,14 @@
         <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="TrackingSession" inverseName="locations" inverseEntity="TrackingSession"/>
     </entity>
     <entity name="TrackingSession" representedClassName="TrackingSession" syncable="YES" codeGenerationType="class">
+        <attribute name="averageSpeed" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="comment" optional="YES" attributeType="String"/>
         <attribute name="endTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="startTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="totalDistance" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="totalDuration" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <relationship name="locations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SavedLocation" inverseName="session" inverseEntity="SavedLocation"/>
     </entity>
 </model>

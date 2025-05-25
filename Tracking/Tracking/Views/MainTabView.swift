@@ -23,9 +23,9 @@ struct MainTabView: View {
                 }
 
             // Übergabe der Locations und des Titels an die MapView
-            MapView()
+            AuswertungView()
                 .tabItem {
-                    Label("Karte", systemImage: "map")
+                    Label("Auswerung", systemImage: "chart.bar")
                 }
         }
     }

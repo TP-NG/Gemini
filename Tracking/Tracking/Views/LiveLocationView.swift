@@ -141,6 +141,7 @@ struct LiveLocationView: View {
 
     private func endCurrentTrackingSession() {
         currentSession?.endTime = Date()
+        
         currentSession = nil
         
         autoSaveTimer?.invalidate()
@@ -149,7 +150,9 @@ struct LiveLocationView: View {
         locationManager.stop() // ← Wichtig!
         
         do {
+            currentSession?.updateMetrics() // ✅ Neue Berechnung
             try viewContext.save()
+            print("✅ Session beendet und Daten gespeichert.")
         } catch {
             print("Fehler beim Speichern der beendeten Session: \(error)")
         }

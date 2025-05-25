@@ -48,6 +48,8 @@ class MapViewModel: ObservableObject {
         
         // Metriken berechnen
         calculateMetrics(locations: locations)
+        
+        
     }
     
     private func calculateMetrics(locations: [SavedLocation]) {
