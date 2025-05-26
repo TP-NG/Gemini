@@ -68,7 +68,7 @@ struct LiveLocationView: View {
             // MARK: Einzel-Speichern
             // Kommentar
             VStack(alignment: .leading) {
-                Text("Kommentar:")
+                Text("Kommentar/Session Name:")
                 TextField("Notiz zum Standort", text: $comment)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
@@ -200,6 +200,8 @@ struct LiveLocationView: View {
             currentSession?.updateMetrics() // ✅ Neue Berechnung
             try viewContext.save()
             print("✅ Session beendet und Daten gespeichert.")
+            comment = ""
+            previewImage = nil
         } catch {
             print("Fehler beim Speichern der beendeten Session: \(error)")
         }
@@ -232,8 +234,11 @@ struct LiveLocationView: View {
             
             if currentSession != nil {
                 print("✅ Punkt in Session gespeichert.")
+                previewImage = nil
             } else {
                 print("✅ Einzelpunkt gespeichert.")
+                comment = ""
+                previewImage = nil
             }
         } catch {
             print("Fehler beim Speichern des Standorts: \(error)")

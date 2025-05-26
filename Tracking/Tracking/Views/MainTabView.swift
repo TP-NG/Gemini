@@ -9,10 +9,11 @@ import SwiftUI
 import CoreData // Da SavedLocation ein Core Data Entity ist
 
 struct MainTabView: View {
-
+    @StateObject var locationManager = LiveLocationManager()
+    
     var body: some View {
         TabView {
-            LiveLocationView() // Zeigt die Live-Position an
+            LiveLocationView(locationManager: locationManager) // Zeigt die Live-Position an
                 .tabItem {
                     Label("Live", systemImage: "location.fill")
                 }
