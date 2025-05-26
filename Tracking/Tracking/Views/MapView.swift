@@ -38,20 +38,39 @@ struct MapView: View {
         ZStack(alignment: .bottomTrailing) {
             // Kartenansicht
             Map(position: $cameraPosition) {
-                // Marker
+                // Marker / Annotation
                 ForEach(viewModel.markers) { item in
-                    Marker(
-                        item.title,
-                        systemImage: item.icon,
-                        coordinate: item.coordinate
-                    )
-                    .tint(item.color)
+                    if item.isIntermediate {
+                        // Zwischenpunkte ausblenden
+                        Marker(item.title, coordinate: item.coordinate)
+                            .tint(.clear)
+                    } else if let imageData = item.imageData, let uiImage = UIImage(data: imageData) {
+                        // Marker mit Bildvorschau
+                        Annotation(item.title, coordinate: item.coordinate) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .frame(width: 40, height: 40)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .shadow(radius: 3)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 1))
+                        }
+                    } else {
+                        // Standard-Marker
+                        Marker(
+                            item.title,
+                            systemImage: item.icon,
+                            coordinate: item.coordinate
+                        )
+                        .tint(item.color)
+                    }
                 }
                 
                 // Route
                 if viewModel.shouldShowRoute {
-                    MapPolyline(coordinates: viewModel.routeCoordinates)
-                        .stroke(.blue, lineWidth: 3)
+                    if !viewModel.routeCoordinates.isEmpty {
+                        MapPolyline(coordinates: viewModel.routeCoordinates)
+                            .stroke(.blue, lineWidth: 3)
+                    }
                 }
             }
             .mapControls {
@@ -59,6 +78,7 @@ struct MapView: View {
                 MapCompass()
                 MapScaleView()
             }
+            
             
             // Info-Button
             Button(action: { showInfoSheet.toggle() }) {
@@ -358,4 +378,29 @@ struct InfoRow: View {
     }
     .padding(.vertical, 4)
   }
+}
+
+
+struct ImageDetailView: View {
+    let image: UIImage
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
+                .navigationTitle("Bild Detail")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Fertig") {
+                            dismiss()
+                        }
+                    }
+                }
+        }
+    }
 }

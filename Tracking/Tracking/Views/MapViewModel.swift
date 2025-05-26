@@ -39,7 +39,8 @@ class MapViewModel: ObservableObject {
                     latitude: location.latitude,
                     longitude: location.longitude
                 ),
-                type: type
+                type: type,
+                imageData: location.imageData
             )
         }
         
@@ -121,6 +122,7 @@ struct MapMarker: Identifiable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
     let type: MarkerType
+    let imageData: Data?
     
     var title: String {
         switch type {
@@ -144,6 +146,10 @@ struct MapMarker: Identifiable {
         case .end: return .blue
         case .normal: return .red
         }
+    }
+    
+    var isIntermediate: Bool {
+        type == .normal
     }
     
     enum MarkerType {
