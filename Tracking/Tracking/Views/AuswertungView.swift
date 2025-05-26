@@ -22,11 +22,8 @@ struct AuswertungView: View {
                 VStack(spacing: 20) {
                     ZeitraumFilterView(selected: $selectedZeitraum)
                     
-                    // Metriken vor der Anzeige aktualisieren
-                    ZusammenfassungView(sessions: filteredSessions.map { session in
-                        session.updateMetrics()
-                        return session
-                    })
+                    //
+                    ZusammenfassungView(sessions: filteredSessions)
                     
                     VerlaufDiagrammView(sessions: filteredSessions)
                     
@@ -76,19 +73,61 @@ enum ZeitFilter: String, CaseIterable, Identifiable {
 
 struct VerlaufDiagrammView: View {
     let sessions: [TrackingSession]
+    // Hilfsfunktion zum Gruppieren
+    private func groupedSessions() -> [Date: Double] {
+        var dailyTotals: [Date: Double] = [:]
+        let calendar = Calendar.current
+        
+        for session in sessions {
+            guard let date = session.startTime, session.totalDistance > 0 else { continue }
+            let dayStart = calendar.startOfDay(for: date)
+            dailyTotals[dayStart, default: 0] += session.totalDistance
+        }
+        
+        return dailyTotals
+    }
+    
+    private var totalDistance: Double {
+        let distance = sessions.reduce(0) { $0 + $1.totalDistance }
+        
+        print("Total Distance in meters: \(distance)")
+        print("Sessions count: \(sessions.count)")
+        sessions.forEach { session in
+            print("Session '\(session.name ?? "Unbenannt")': \(session.totalDistance)m")
+        }
+        return distance
+    }
+    
+    // Hilfsfunktion für konsistente Umrechnung
+    private func km(from meters: Double) -> Double {
+        meters / 1000
+    }
     
     var body: some View {
         Chart {
+            // Zuerst die einzelnen Sessions (für die farbigen Balken)
             ForEach(sessions) { session in
                 if let start = session.startTime, session.totalDistance > 0 {
                     BarMark(
                         x: .value("Datum", start, unit: .day),
-                        y: .value("Distanz", session.totalDistance / 1000)
+                        y: .value("Distanz", km(from: session.totalDistance))
                     )
                     .foregroundStyle(by: .value("Session", session.name ?? "Unbenannt"))
+                }
+            }
+            
+            // Dann die Annotationen mit den Tages-Totals
+            ForEach(Array(groupedSessions().keys.sorted()), id: \.self) { date in
+                if let total = groupedSessions()[date] {
+                    RuleMark(
+                        x: .value("Datum", date, unit: .day)
+                    )
                     .annotation(position: .top) {
-                        Text("\(session.totalDistance/1000, specifier: "%.1f")km")
+                        Text("\(km(from: total), specifier: "%.2f") km")
                             .font(.caption2)
+                            .padding(4)
+                            .background(Color.gray.opacity(0.9))
+                            .cornerRadius(4)
                     }
                 }
             }
@@ -102,9 +141,23 @@ struct VerlaufDiagrammView: View {
         }
         .frame(height: 300)
         .padding()
+        .chartForegroundStyleScale(range: [.blue, .green, .orange]) // Farben festlegen
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let x = value.location.x - geometry[proxy.plotAreaFrame].origin.x
+                                if let date: Date = proxy.value(atX: x) {
+                                    // Hier können Sie den ausgewählten Tag speichern
+                                }
+                            }
+                    )
+            }
+        }
     }
 }
-
 struct ZeitraumFilterView: View {
     @Binding var selected: ZeitFilter
 
@@ -120,17 +173,37 @@ struct ZeitraumFilterView: View {
 
 struct SessionListeView: View {
     let sessions: [TrackingSession]
+    
+    // Hilfsfunktion zur Umrechnung in km
+    private func km(from meters: Double) -> Double {
+        meters / 1000
+    }
+    
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Einzelsessions")
                 .font(.headline)
+                .padding(.bottom, 4)
+            
             ForEach(sessions, id: \.self) { session in
-                Text(session.name ?? "Unbenannt")
+                HStack {
+                    Text(session.name ?? "Unbenannt")
+                        .font(.subheadline)
+                    
+                    Spacer()
+                    
+                    Text("\(km(from: session.totalDistance), specifier: "%.1f") km")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
             }
         }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(10)
     }
 }
-
 
 // Metriken vor der Anzeige aktualisieren
 struct ZusammenfassungView: View {
@@ -138,7 +211,14 @@ struct ZusammenfassungView: View {
     
     // Berechnete Werte
     private var totalDistance: Double {
-        sessions.reduce(0) { $0 + $1.totalDistance }
+        let distance = sessions.reduce(0) { $0 + $1.totalDistance }
+        
+        print("Total Distance in meters: \(distance)")
+        print("Sessions count: \(sessions.count)")
+        sessions.forEach { session in
+            print("Session '\(session.name ?? "Unbenannt")': \(session.totalDistance)m")
+        }
+        return distance
     }
     
     private var totalDuration: TimeInterval {
@@ -258,11 +338,13 @@ struct ZusammenfassungView: View {
             formatter.unitsStyle = .short
         }
         
+        /*
         print("""
         Test-Ergebnisse:
         - Berechnete Distanz: \(totalDistance)m
         - Erwartete Duration: \(totalDuration)m
         """)
+        */
         
         // Spezialfall: Weniger als 1 Minute
         if totalDuration < 60 {
@@ -275,11 +357,12 @@ struct ZusammenfassungView: View {
     }
     
     private var formattedSpeed: String {
-        
+        /*
         print("""
         Test-Ergebnisse:
         - averageSpeed: \(averageSpeed)m
         """)
+        */
         
         return String(format: "%.1f km/h", averageSpeed * 3.6)
     }
