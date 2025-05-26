@@ -75,7 +75,11 @@ struct MapView: View {
                 locations: locationsToDisplay,
                 distance: viewModel.distance,
                 duration: viewModel.duration,
-                speed: viewModel.averageSpeed
+                speed: viewModel.averageSpeed,
+                totalAscent: viewModel.totalAscent,
+                totalDescent: viewModel.totalDescent,
+                minAltitude: viewModel.minAltitude,
+                maxAltitude: viewModel.maxAltitude
             )
             .presentationDetents([.medium, .large])
         }
@@ -124,143 +128,180 @@ struct MapView: View {
 struct InfoOverlayContent: View {
     let locations: [SavedLocation]
     let distance: Double?
-  let duration: TimeInterval?
-  let speed: Double?
-  
-  var body: some View {
-    ZStack {
-      // Transparenter Blur-Hintergrund
-      RoundedRectangle(cornerRadius: 16)
-        .fill(.ultraThinMaterial) // WICHTIG: iOS 15+ Feature
-        .opacity(0.9) // Deckkraft anpassbar (0.8-1.0)
-        .shadow(radius: 5)
-      
-      // Inhalt
-      VStack {
-        if locations.count > 1 {
-          RouteInfoView(distance: distance, duration: duration, pointCount: locations.count, speed: speed)
-        } else if let point = locations.first {
-          SinglePointInfoView(point: point)
-        }
-      }
-      .padding(20)
-    }
-    .padding()
-    .frame(maxWidth: .infinity)
+    let duration: TimeInterval?
+    let speed: Double?
     
-  }
+    let totalAscent: Double?
+    let totalDescent: Double?
+    let minAltitude: Double?
+    let maxAltitude: Double?
+    
+    var body: some View {
+        ZStack {
+            // Transparenter Blur-Hintergrund
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial) // WICHTIG: iOS 15+ Feature
+                .opacity(0.9) // Deckkraft anpassbar (0.8-1.0)
+                .shadow(radius: 5)
+            
+            // Inhalt
+            VStack {
+                if locations.count > 1 {
+                    RouteInfoView(distance: distance, duration: duration, pointCount: locations.count, speed: speed, totalAscent: totalAscent, totalDescent: totalDescent, minAltitude: minAltitude, maxAltitude: maxAltitude)
+                } else if let point = locations.first {
+                    SinglePointInfoView(point: point)
+                }
+            }
+            .padding(20)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        
+    }
 }
 
 
 struct RouteInfoView: View {
-  let distance: Double?
-  let duration: TimeInterval?
-  let pointCount: Int
-  let speed: Double?
-  
-  // Neuer Zustand für dynamische Deckkraft
-  @Environment(\.colorScheme) var colorScheme
-  
-  var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Route Details")
-        .font(.title2.bold())
-        .padding(.bottom, 5)
-      
-      InfoRow(
-        icon: "point.topleft.down.curvedto.point.bottomright.up",
-        label: "Streckenlänge",
-        value: distance != nil ? String(format: "%.2f km", distance! / 1000) : "–"
-      )
-      
-      InfoRow(
-        icon: "stopwatch",
-        label: "Dauer",
-        value: duration != nil ? formattedDuration(duration!) : "–"
-      )
-      
-      if let speed = speed {
-             InfoRow(
-               icon: "speedometer",
-               label: "Ø Geschwindigkeit",
-               value: String(format: "%.1f km/h", speed * 3.6)
-             )
-           }
-      
-      InfoRow(
-        icon: "mappin.and.ellipse",
-        label: "Anzahl Punkte",
-        value: "\(pointCount)"
-      )
+    let distance: Double?
+    let duration: TimeInterval?
+    let pointCount: Int
+    let speed: Double?
+    
+    let totalAscent: Double?
+    let totalDescent: Double?
+    let minAltitude: Double?
+    let maxAltitude: Double?
+    
+    // Neuer Zustand für dynamische Deckkraft
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Route Details")
+                .font(.title2.bold())
+                .padding(.bottom, 5)
+            
+            InfoRow(
+                icon: "point.topleft.down.curvedto.point.bottomright.up",
+                label: "Streckenlänge",
+                value: distance != nil ? String(format: "%.2f km", distance! / 1000) : "–"
+            )
+            
+            InfoRow(
+                icon: "stopwatch",
+                label: "Dauer",
+                value: duration != nil ? formattedDuration(duration!) : "–"
+            )
+            
+            if let speed = speed {
+                InfoRow(
+                    icon: "speedometer",
+                    label: "Ø Geschwindigkeit",
+                    value: String(format: "%.1f km/h", speed * 3.6)
+                )
+            }
+            
+            InfoRow(
+                icon: "arrow.up.right",
+                label: "Aufstieg",
+                value: totalAscent! > 0 ? String(format: "%.0f m", totalAscent!) : "–"
+            )
+            
+            InfoRow(
+                icon: "arrow.down.right",
+                label: "Abstieg",
+                value: totalDescent! > 0 ? String(format: "%.0f m", totalDescent!) : "–"
+            )
+            
+            InfoRow(
+                icon: "arrowtriangle.down.circle",
+                label: "Min. Höhe",
+                value: minAltitude! > 0 ? String(format: "%.0f m", minAltitude!) : "–"
+            )
+            
+            InfoRow(
+                icon: "arrowtriangle.up.circle",
+                label: "Max. Höhe",
+                value: maxAltitude! > 0 ? String(format: "%.0f m", maxAltitude!) : "–"
+            )
+            InfoRow(
+                icon: "mappin.and.ellipse",
+                label: "Anzahl Punkte",
+                value: "\(pointCount)"
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            // Transparenter Material-Hintergrund
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ?
+                      Material.ultraThinMaterial.opacity(0.1) :
+                        Material.regularMaterial.opacity(0.15))
+                .shadow(radius: 10)
+        )
+        .padding()
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(
-      // Transparenter Material-Hintergrund
-      RoundedRectangle(cornerRadius: 16)
-        .fill(colorScheme == .dark ?
-           Material.ultraThinMaterial.opacity(0.1) :
-           Material.regularMaterial.opacity(0.15))
-        .shadow(radius: 10)
-    )
-    .padding()
-  }
-  
-  private func formattedDuration(_ duration: TimeInterval) -> String {
-    let formatter = DateComponentsFormatter()
-    formatter.allowedUnits = [.hour, .minute, .second]
-    formatter.unitsStyle = .abbreviated
-    return formatter.string(from: duration) ?? "0s"
-  }
+    
+    private func formattedDuration(_ duration: TimeInterval) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute, .second]
+        formatter.unitsStyle = .abbreviated
+        return formatter.string(from: duration) ?? "0s"
+    }
 }
 
 struct SinglePointInfoView: View {
-  let point: SavedLocation
-  
-  
-  // Neuer Zustand für dynamische Deckkraft
-  @Environment(\.colorScheme) var colorScheme
-  
-  var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 16) {
-        Text("Punkt Details")
-          .font(.title2.bold())
-          .padding(.bottom, 5)
-        
-        InfoRow(
-          icon: "mappin",
-          label: "Koordinaten",
-          value: String(format: "%.6f, %.6f", point.latitude, point.longitude)
-        )
-        
-        InfoRow(
-          icon: "calendar",
-          label: "Datum",
-          value: point.timestamp?.formatted() ?? "Unbekannt"
-        )
-        
-        if let comment = point.comment, !comment.isEmpty {
-          InfoRow(
-            icon: "text.bubble",
-            label: "Kommentar",
-            value: comment
-          )
+    let point: SavedLocation
+    
+    
+    // Neuer Zustand für dynamische Deckkraft
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Punkt Details")
+                    .font(.title2.bold())
+                    .padding(.bottom, 5)
+                
+                InfoRow(
+                    icon: "mappin",
+                    label: "Koordinaten",
+                    value: String(format: "%.6f, %.6f", point.latitude, point.longitude)
+                )
+                
+                InfoRow(
+                    icon: "calendar",
+                    label: "Datum",
+                    value: point.timestamp?.formatted() ?? "Unbekannt"
+                )
+                
+                if point.altitude > 0 {
+                    InfoRow(icon: "mountain.2.fill", label: "Höhe", value: String(format: "%.0f m", point.altitude))
+                }
+                
+                if let comment = point.comment, !comment.isEmpty {
+                    InfoRow(
+                        icon: "text.bubble",
+                        label: "Kommentar",
+                        value: comment
+                    )
+                }
+                
+                ImageSection(point: point)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                // Transparenter Material-Hintergrund
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(colorScheme == .dark ?
+                          Material.ultraThinMaterial.opacity(0.1) :
+                            Material.regularMaterial.opacity(0.15))
+                    .shadow(radius: 10)
+            )
+            .padding()
         }
-        
-        ImageSection(point: point)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(
-        // Transparenter Material-Hintergrund
-        RoundedRectangle(cornerRadius: 16)
-          .fill(colorScheme == .dark ?
-             Material.ultraThinMaterial.opacity(0.1) :
-             Material.regularMaterial.opacity(0.15))
-          .shadow(radius: 10)
-      )
-      .padding()
     }
-  }
 }
 
 struct ImageSection: View {

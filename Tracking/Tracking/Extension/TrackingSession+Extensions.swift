@@ -47,6 +47,34 @@ extension TrackingSession {
                 .distance(from: CLLocation(latitude: current.latitude, longitude: current.longitude))
         }
         
+        // Höhenmeter-Berechnung
+        let coordinates = locations.map {
+            CLLocation(coordinate: CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude),
+                       altitude: $0.altitude,
+                       horizontalAccuracy: 1,
+                       verticalAccuracy: 1,
+                       timestamp: $0.timestamp ?? Date())
+        }
+        var totalAscent: CLLocationDistance = 0
+        var totalDescent: CLLocationDistance = 0
+        var minAltitude: CLLocationDistance = coordinates.first?.altitude ?? 0
+        var maxAltitude: CLLocationDistance = minAltitude
+
+        for i in 1..<coordinates.count {
+            let prevAlt = coordinates[i-1].altitude
+            let currAlt = coordinates[i].altitude
+            let diff = currAlt - prevAlt
+
+            if diff > 0 {
+                totalAscent += diff
+            } else {
+                totalDescent += abs(diff)
+            }
+
+            minAltitude = min(minAltitude, currAlt)
+            maxAltitude = max(maxAltitude, currAlt)
+        }
+
         // Dauerberechnung
         let endTime = self.endTime ?? locations.last?.timestamp ?? startTime
         let duration = endTime.timeIntervalSince(startTime)
@@ -56,15 +84,25 @@ extension TrackingSession {
         self.totalDistance = totalDistance
         self.totalDuration = duration
         self.averageSpeed = speed
+        self.totalAscent = totalAscent
+        self.totalDescent = totalDescent
+        self.minAltitude = minAltitude
+        self.maxAltitude = maxAltitude
         
+        /*
+         
         // DEBUG-Ausgabe
         print("""
         Aktualisierte Metriken für Session \(self.name ?? "Unbenannt"):
         - Distanz: \(totalDistance) m
         - Dauer: \(duration) s
         - Geschwindigkeit: \(speed) m/s
+        - Aufstieg: \(totalAscent) m
+        - Abstieg: \(totalDescent) m
+        - Min. Höhe: \(minAltitude) m
+        - Max. Höhe: \(maxAltitude) m
         """)
+         
+         */
     }
 }
-
-

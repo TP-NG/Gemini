@@ -70,16 +70,26 @@ struct SessionListView: View {
                             VStack(alignment: .leading) {
                                 Text("Breite: \(location.latitude), Länge: \(location.longitude)")
                                     .font(.body)
+                                
+                                if location.altitude > 0 {
+                                    InfoRow(
+                                        icon: "mountain.2.fill",
+                                        label: "Höhe",
+                                        value: String(format: "%.0f m", location.altitude)
+                                    )
+                                }
+                                
                                 if let date = location.timestamp {
                                     Text(date.formatted(date: .abbreviated, time: .shortened))
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                 }
+                                
                                 if let comment = location.comment, !comment.isEmpty {
                                     Text("🗒️ \(comment)")
                                         .font(.subheadline)
                                 }
-
+                                
                                 if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
                                     Image(uiImage: uiImage)
                                         .resizable()

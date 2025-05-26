@@ -36,6 +36,7 @@ class LiveLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate
         guard let latestLocation = locations.last else { return }
         DispatchQueue.main.async {
             self.currentLocation = latestLocation
+            print("Aktuelle Höhe: \(latestLocation.altitude) m")
             self.region = MKCoordinateRegion(
                 center: latestLocation.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)

@@ -151,6 +151,22 @@ struct ZusammenfassungView: View {
         return totalDistance / totalDuration
     }
     
+    private var totalAscent: Double {
+        sessions.reduce(0) { $0 + ($1.totalAscent ?? 0) }
+    }
+
+    private var totalDescent: Double {
+        sessions.reduce(0) { $0 + ($1.totalDescent ?? 0) }
+    }
+
+    private var minAltitude: Double {
+        sessions.compactMap { $0.minAltitude }.min() ?? 0
+    }
+
+    private var maxAltitude: Double {
+        sessions.compactMap { $0.maxAltitude }.max() ?? 0
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Zusammenfassung")
@@ -178,6 +194,30 @@ struct ZusammenfassungView: View {
                         icon: "speedometer",
                         label: "Ø Geschwindigkeit",
                         value: formattedSpeed
+                    )
+                    
+                    InfoRow(
+                        icon: "arrow.up.right",
+                        label: "Aufstieg",
+                        value: totalAscent > 0 ? String(format: "%.0f m", totalAscent) : "–"
+                    )
+
+                    InfoRow(
+                        icon: "arrow.down.right",
+                        label: "Abstieg",
+                        value: totalDescent > 0 ? String(format: "%.0f m", totalDescent) : "–"
+                    )
+
+                    InfoRow(
+                        icon: "arrowtriangle.down.circle",
+                        label: "Min. Höhe",
+                        value: minAltitude > 0 ? String(format: "%.0f m", minAltitude) : "–"
+                    )
+
+                    InfoRow(
+                        icon: "arrowtriangle.up.circle",
+                        label: "Max. Höhe",
+                        value: maxAltitude > 0 ? String(format: "%.0f m", maxAltitude) : "–"
                     )
                 }
                 

@@ -13,6 +13,11 @@ class MapViewModel: ObservableObject {
     @Published var duration: TimeInterval?
     @Published var averageSpeed: Double?
     
+    @Published var totalAscent: Double?
+    @Published var totalDescent: Double?
+    @Published var minAltitude: Double?
+    @Published var maxAltitude: Double?
+    
     var shouldShowRoute: Bool {
         routeCoordinates.count > 1
     }
@@ -82,6 +87,32 @@ class MapViewModel: ObservableObject {
         
         // Geschwindigkeit
         averageSpeed = (duration ?? 0) > 0 ? (distance ?? 0) / (duration ?? 1) : 0
+        
+        // Höhenmetriken berechnen
+        var ascent: CLLocationDistance = 0
+        var descent: CLLocationDistance = 0
+        var minAlt = locations.first?.altitude ?? 0
+        var maxAlt = minAlt
+
+        for i in 1..<locations.count {
+            let prevAlt = locations[i - 1].altitude
+            let currAlt = locations[i].altitude
+            let delta = currAlt - prevAlt
+
+            if delta > 0 {
+                ascent += delta
+            } else {
+                descent += abs(delta)
+            }
+
+            minAlt = min(minAlt, currAlt)
+            maxAlt = max(maxAlt, currAlt)
+        }
+
+        totalAscent = ascent
+        totalDescent = descent
+        minAltitude = minAlt
+        maxAltitude = maxAlt
     }
 }
 

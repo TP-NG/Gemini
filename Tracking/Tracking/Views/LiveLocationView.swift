@@ -212,6 +212,7 @@ struct LiveLocationView: View {
         newLocation.id = UUID()
         newLocation.latitude = location.coordinate.latitude
         newLocation.longitude = location.coordinate.longitude
+        newLocation.altitude = location.altitude
         newLocation.timestamp = Date()
         
         newLocation.comment = comment
