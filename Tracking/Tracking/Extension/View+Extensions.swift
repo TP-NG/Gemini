@@ -18,3 +18,15 @@ extension View {
         }
     }
 }
+
+
+// UIImage-Extension für Skalierung (am Dateiende hinzufügen)
+extension UIImage {
+    func scaled(to size: CGSize) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1.0
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            self.draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+}
