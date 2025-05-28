@@ -10,6 +10,10 @@ struct MapView: View {
     let locationsToDisplay: [SavedLocation]
     let mapTitle: String
     
+    
+    @State private var selectedImage: UIImage?
+    
+    
     @StateObject private var viewModel = MapViewModel()
     @State private var cameraPosition: MapCameraPosition
     @State private var showInfoSheet = false
@@ -36,47 +40,45 @@ struct MapView: View {
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            // Kartenansicht
+            // Kartenansicht mit explizitem Inhaltstyp
             Map(position: $cameraPosition) {
-                // Marker / Annotation
-                ForEach(viewModel.markers) { item in
-                    if item.isIntermediate {
-                        // Zwischenpunkte ausblenden
-                        Marker(item.title, coordinate: item.coordinate)
-                            .tint(.clear)
-                    } else if let imageData = item.imageData, let uiImage = UIImage(data: imageData) {
-                        // Marker mit Bildvorschau
-                        Annotation(item.title, coordinate: item.coordinate) {
+                ForEach(viewModel.markers) { marker in
+                    if marker.isIntermediate {
+                        // Marker ohne Bild überspringen
+                    } else if let imageData = marker.imageData,
+                              let uiImage = UIImage(data: imageData) {
+                        Annotation(marker.title, coordinate: marker.coordinate) {
                             Image(uiImage: uiImage)
                                 .resizable()
                                 .frame(width: 40, height: 40)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .shadow(radius: 3)
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 1))
+                                .onTapGesture {
+                                    selectedImage = uiImage
+                                }
                         }
                     } else {
-                        // Standard-Marker
                         Marker(
-                            item.title,
-                            systemImage: item.icon,
-                            coordinate: item.coordinate
+                            marker.title,
+                            systemImage: marker.icon,
+                            coordinate: marker.coordinate
                         )
-                        .tint(item.color)
+                        .tint(marker.color)
                     }
                 }
                 
                 // Route
-                if viewModel.shouldShowRoute {
-                    if !viewModel.routeCoordinates.isEmpty {
-                        MapPolyline(coordinates: viewModel.routeCoordinates)
-                            .stroke(.blue, lineWidth: 3)
-                    }
+                if viewModel.shouldShowRoute, !viewModel.routeCoordinates.isEmpty {
+                    MapPolyline(coordinates: viewModel.routeCoordinates)
+                        .stroke(.blue, lineWidth: 3)
                 }
             }
             .mapControls {
                 MapUserLocationButton()
                 MapCompass()
                 MapScaleView()
+            }
+            .sheet(item: $selectedImage) { image in
+                ImageDetailView(image: image)
             }
             
             
@@ -102,13 +104,17 @@ struct MapView: View {
                 maxAltitude: viewModel.maxAltitude
             )
             .presentationDetents([.medium, .large])
+            
         }
         .task(id: locationsToDisplay.hashValue) {
             await viewModel.update(with: locationsToDisplay)
             zoomToDisplayedPoints()
         }
         .navigationTitle(mapTitle.isEmpty ? "Karte" : mapTitle)
+        
     }
+    
+
     
     private func zoomToDisplayedPoints() {
         guard !viewModel.routeCoordinates.isEmpty else { return }
@@ -119,10 +125,9 @@ struct MapView: View {
         let coordinates = viewModel.routeCoordinates
         
         if coordinates.count == 1 {
-            cameraPosition = .region(MKCoordinateRegion(
-                center: coordinates[0],
-                span: MKCoordinateSpan(latitudeDelta: minZoomSpan, longitudeDelta: minZoomSpan)
-            ))
+            let singleCoord = coordinates[0]
+            let span = MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+            cameraPosition = .region(MKCoordinateRegion(center: singleCoord, span: span))
             return
         }
         
@@ -144,6 +149,8 @@ struct MapView: View {
         cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
     }
 }
+
+
 // MARK: - Info Overlay Komponente
 struct InfoOverlayContent: View {
     let locations: [SavedLocation]
@@ -404,3 +411,5 @@ struct ImageDetailView: View {
         }
     }
 }
+
+

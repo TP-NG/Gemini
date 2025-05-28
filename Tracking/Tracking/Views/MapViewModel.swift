@@ -27,7 +27,9 @@ class MapViewModel: ObservableObject {
         // Marker erstellen
         markers = locations.enumerated().map { index, location in
             let type: MapMarker.MarkerType = {
-                if locations.count > 1 {
+                if locations.count == 1 {
+                    return .single
+                } else {
                     if index == 0 { return .start }
                     if index == locations.count - 1 { return .end }
                 }
@@ -129,6 +131,7 @@ struct MapMarker: Identifiable {
         case .start: return "Start"
         case .end: return "Ziel"
         case .normal: return "Punkt"
+        case .single: return "Spot"
         }
     }
     
@@ -137,6 +140,7 @@ struct MapMarker: Identifiable {
         case .start: return "flag.fill"
         case .end: return "flag.checkered"
         case .normal: return "mappin"
+        case .single: return "circle.fill"
         }
     }
     
@@ -145,6 +149,7 @@ struct MapMarker: Identifiable {
         case .start: return .green
         case .end: return .blue
         case .normal: return .red
+        case .single: return .purple
         }
     }
     
@@ -153,6 +158,6 @@ struct MapMarker: Identifiable {
     }
     
     enum MarkerType {
-        case start, end, normal
+        case start, end, normal, single
     }
 }

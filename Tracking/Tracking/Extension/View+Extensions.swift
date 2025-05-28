@@ -18,3 +18,10 @@ extension View {
         }
     }
 }
+
+// UIImage Identifiable-Erweiterung für .sheet(item:)
+extension UIImage: @retroactive Identifiable {
+    public var id: UUID {
+        return UUID()
+    }
+}
