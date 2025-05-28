@@ -7,17 +7,18 @@ import SwiftUI
 import MapKit
 
 struct MapView: View {
-    // MARK: - Existing Properties
-        let locationsToDisplay: [SavedLocation]
-        let mapTitle: String
-        
-        @StateObject private var viewModel = MapViewModel()
-        @State private var cameraPosition: MapCameraPosition
-        @State private var showInfoSheet = false
-        
-        // MARK: - Image Handling Properties (KORREKTUR HIER)
-        @State private var selectedImageData: Data = Data() // Nicht optional, initial leer
-        @State private var showImageDetail = false
+    // MARK: - Properties
+    
+    let locationsToDisplay: [SavedLocation]
+    let mapTitle: String
+    
+    @StateObject private var viewModel = MapViewModel()
+    @State private var cameraPosition: MapCameraPosition
+    @State private var showInfoSheet = false
+    @State private var selectedImageData = Data()
+    @State private var showImageDetail = false
+    
+    // MARK: - Initializer
     
     init(locationsToDisplay: [SavedLocation] = [], mapTitle: String = "") {
         self.locationsToDisplay = locationsToDisplay
@@ -32,6 +33,7 @@ struct MapView: View {
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
             )))
         } else {
+            // Default to Germany if no locations
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 51.0, longitude: 10.0),
                 span: MKCoordinateSpan(latitudeDelta: 10.0, longitudeDelta: 10.0)
@@ -39,90 +41,18 @@ struct MapView: View {
         }
     }
     
+    // MARK: - Body
+    
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            // Kartenansicht
-            Map(position: $cameraPosition) {
-                // Marker / Annotation
-                ForEach(viewModel.markers) { item in
-                    
-                    // Absolute Null-Check-Sicherheit
-                    if CLLocationCoordinate2DIsValid(item.coordinate) {
-                        // Einzelne Punkte immer anzeigen, auch wenn sie isIntermediate sind
-                        if let imageData = item.imageData, let uiImage = loadImage(from: imageData) {
-                            // Marker mit Bildvorschau
-                            Annotation(item.title, coordinate: item.coordinate) {
-                                Button {
-                                    if let validData = item.imageData {
-                                           print("✅ Daten valid - Größe: \(validData.count) bytes")
-                                           selectedImageData = validData // Direkte Zuweisung
-                                           showImageDetail = true
-                                       } else {
-                                           print("❌ Keine Bilddaten vorhanden")
-                                       }
-                                } label: {
-                                    if let imageData = item.imageData,
-                                       let uiImage = UIImage(data: imageData) {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .frame(width: 40, height: 40)
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    } else {
-                                        Image(systemName: "photo")
-                                            .frame(width: 40, height: 40)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        } else if !item.isIntermediate {
-                            // Standard-Marker nur für nicht-intermediäre Punkte ohne Bild
-                            Marker(
-                                item.title,
-                                systemImage: item.icon,
-                                coordinate: item.coordinate
-                            )
-                            .tint(item.color)
-                        }
-                    }
-                }
-                
-                if viewModel.shouldShowRoute && !viewModel.routeCoordinates.isEmpty {
-                    MapPolyline(coordinates: viewModel.routeCoordinates)
-                        .stroke(.blue, lineWidth: 3)
-                }
-            }
-            .mapControls {
-                MapUserLocationButton()
-                MapCompass()
-                MapScaleView()
-            }
-            
-            
-            // Info-Button
-            Button(action: { showInfoSheet.toggle() }) {
-                Image(systemName: "info.circle.fill")
-                    .font(.title)
-                    .padding(10)
-                    .background(Circle().fill(.ultraThinMaterial))
-                    .shadow(radius: 5)
-            }
-            .padding()
+            mapContent
+            infoButton
         }
         .sheet(isPresented: $showImageDetail) {
-            ImageDetailView(imageData: selectedImageData) // Übergabe der gesicherten Daten
+            ImageDetailView(imageData: selectedImageData)
         }
         .sheet(isPresented: $showInfoSheet) {
-            InfoOverlayContent(
-                locations: locationsToDisplay,
-                distance: viewModel.distance,
-                duration: viewModel.duration,
-                speed: viewModel.averageSpeed,
-                totalAscent: viewModel.totalAscent,
-                totalDescent: viewModel.totalDescent,
-                minAltitude: viewModel.minAltitude,
-                maxAltitude: viewModel.maxAltitude
-            )
-            .presentationDetents([.medium, .large])
+            infoSheetContent
         }
         .task(id: locationsToDisplay.hashValue) {
             await viewModel.update(with: locationsToDisplay)
@@ -131,19 +61,106 @@ struct MapView: View {
         .navigationTitle(mapTitle.isEmpty ? "Karte" : mapTitle)
     }
     
+    // MARK: - Subviews
+    
+    private var mapContent: some View {
+        Map(position: $cameraPosition) {
+            markersContent
+            routeContent
+        }
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+            MapScaleView()
+        }
+    }
+    
+    private var markersContent: some MapContent {
+        ForEach(viewModel.markers) { item in
+            if CLLocationCoordinate2DIsValid(item.coordinate) {
+                if let imageData = item.imageData, let _ = loadImage(from: imageData) {
+                    imageMarker(item: item, imageData: imageData)
+                } else if !item.isIntermediate {
+                    standardMarker(item: item)
+                }
+            }
+        }
+    }
+
+    
+    private func imageMarker(item: MarkerItem, imageData: Data) -> some MapContent {
+        Annotation(item.title, coordinate: item.coordinate) {
+            Button {
+                if !imageData.isEmpty {
+                    selectedImageData = imageData
+                    showImageDetail = true
+                }
+            } label: {
+                if let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Image(systemName: "photo")
+                        .frame(width: 40, height: 40)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
+    private func standardMarker(item: MarkerItem) -> some MapContent {
+        Marker(
+            item.title,
+            systemImage: item.icon,
+            coordinate: item.coordinate
+        )
+        .tint(item.color)
+    }
+    
+    private var routeContent: some MapContent {
+        if viewModel.shouldShowRoute && !viewModel.routeCoordinates.isEmpty {
+            MapPolyline(coordinates: viewModel.routeCoordinates)
+                .stroke(.blue, lineWidth: 3)
+        } else {
+            // Return empty map content when condition isn't met
+            MapPolyline(coordinates: [])
+                .stroke(.clear, lineWidth: 0)
+        }
+    }
+
+
+    private var infoButton: some View {
+        Button(action: { showInfoSheet.toggle() }) {
+            Image(systemName: "info.circle.fill")
+                .font(.title)
+                .padding(10)
+                .background(Circle().fill(.ultraThinMaterial))
+                .shadow(radius: 5)
+        }
+        .padding()
+    }
+    
+    private var infoSheetContent: some View {
+        InfoOverlayContent(
+            locations: locationsToDisplay,
+            distance: viewModel.distance,
+            duration: viewModel.duration,
+            speed: viewModel.averageSpeed,
+            totalAscent: viewModel.totalAscent,
+            totalDescent: viewModel.totalDescent,
+            minAltitude: viewModel.minAltitude,
+            maxAltitude: viewModel.maxAltitude
+        )
+        .presentationDetents([.medium, .large])
+    }
+    
+    // MARK: - Helper Methods
+    
     private func loadImage(from data: Data?) -> UIImage? {
-        guard let data = data else {
-            print("Keine Bilddaten vorhanden")
-            return nil
-        }
-        
-        guard let image = UIImage(data: data) else {
-            print("Bilddaten konnten nicht dekodiert werden")
-            return nil
-        }
-        
-        print("Bild erfolgreich geladen. Größe: \(image.size)")
-        return image
+        guard let data = data else { return nil }
+        return UIImage(data: data)
     }
     
     private func zoomToDisplayedPoints() {
@@ -151,15 +168,14 @@ struct MapView: View {
         
         let minZoomSpan: CLLocationDegrees = 0.001
         let padding = 0.2
-        
         let coordinates = viewModel.routeCoordinates
         
-        // Angepasster Zoom für einzelne Punkte
+        // Special handling for single point
         if coordinates.count == 1 {
             cameraPosition = .camera(
                 MapCamera(
                     centerCoordinate: coordinates[0],
-                    distance: 500, // Höhe in Metern
+                    distance: 500,
                     heading: 0,
                     pitch: 60
                 )
@@ -167,6 +183,7 @@ struct MapView: View {
             return
         }
         
+        // Calculate region for multiple points
         let minLat = coordinates.map { $0.latitude }.min()!
         let maxLat = coordinates.map { $0.latitude }.max()!
         let minLon = coordinates.map { $0.longitude }.min()!
@@ -186,45 +203,10 @@ struct MapView: View {
     }
 }
 
-/*
-struct ImageDetailView: View {
-    let image: UIImage
-    @Environment(\.dismiss) var dismiss
-    @State private var scale: CGFloat = 1.0
-    
-    // Skaliertes Bild für bessere Performance
-    private var scaledImage: UIImage {
-        let targetSize = CGSize(width: UIScreen.main.bounds.width * 2,
-                              height: UIScreen.main.bounds.height * 2)
-        return image.scaled(to: targetSize)
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView([.horizontal, .vertical]) {
-                Image(uiImage: scaledImage)  // ← Verwende skaliertes Bild
-                    .resizable()
-                    .scaledToFit()
-                    .scaleEffect(scale)
-                    .gesture(
-                        MagnificationGesture()
-                            .onChanged { scale = $0.magnitude }
-                    )
-            }
-            .background(.black)
-            .navigationTitle("Bild")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fertig") { dismiss() }
-                }
-            }
-        }
-    }
-}
-*/
+// MARK: - Supporting Views
 
 struct ImageDetailView: View {
-    let imageData: Data // Nicht optional!
+    let imageData: Data
     @State private var image: UIImage?
     
     var body: some View {
@@ -236,122 +218,24 @@ struct ImageDetailView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                VStack {
-                    ProgressView()
-                    Text("Lade \(imageData.count.formatted()) Bytes...")
-                        .foregroundColor(.white)
-                }
+                loadingView
             }
         }
         .task {
-            image = await ImageLoader.loadImage(from: imageData)
-            print("Bildstatus: \(image != nil ? "Erfolg" : "Fehler")")
+            image = UIImage(data: imageData)
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack {
+            ProgressView()
+            Text("Lade \(imageData.count.formatted()) Bytes...")
+                .foregroundColor(.white)
         }
     }
 }
 
-struct AsyncImageView: View {
-    let imageData: Data
-    @State private var image: UIImage?
-    @State private var isLoading = true
-    
-    var body: some View {
-        ZStack {
-            if isLoading {
-                ProgressView()
-                    .scaleEffect(2)
-            } else if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-            }
-        }
-        .task {
-            await loadImageInBackground()
-        }
-    }
-    
-    private func loadImageInBackground() async {
-        // Hintergrund-Thread für schwere Operationen
-        let task = Task.detached(priority: .userInitiated) {
-            // Kleine Verzögerung für flüssigere UI (optional)
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            return UIImage(data: imageData)?.scaled(to: CGSize(width: 2000, height: 2000))
-        }
-        
-        await MainActor.run {
-            isLoading = true
-        }
-        
-        let result = await task.value
-        
-        await MainActor.run {
-            image = result
-            isLoading = false
-        }
-    }
-}
-
-
-struct ZoomableScrollView<Content: View>: UIViewRepresentable {
-    private var content: Content
-    @Binding var scale: CGFloat
-    @Binding var lastScale: CGFloat
-    
-    init(scale: Binding<CGFloat>, lastScale: Binding<CGFloat>, @ViewBuilder content: () -> Content) {
-        self._scale = scale
-        self._lastScale = lastScale
-        self.content = content()
-    }
-    
-    func makeUIView(context: Context) -> UIScrollView {
-        let scrollView = UIScrollView()
-        scrollView.delegate = context.coordinator
-        scrollView.maximumZoomScale = 5
-        scrollView.minimumZoomScale = 1
-        scrollView.showsVerticalScrollIndicator = false
-        scrollView.showsHorizontalScrollIndicator = false
-        
-        let hostedView = context.coordinator.hostingController.view!
-        hostedView.translatesAutoresizingMaskIntoConstraints = true
-        hostedView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        hostedView.frame = scrollView.bounds
-        scrollView.addSubview(hostedView)
-        
-        return scrollView
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(hostingController: UIHostingController(rootView: content), scale: $scale, lastScale: $lastScale)
-    }
-    
-    func updateUIView(_ uiView: UIScrollView, context: Context) {
-        context.coordinator.hostingController.rootView = content
-        uiView.zoomScale = scale
-    }
-    
-    class Coordinator: NSObject, UIScrollViewDelegate {
-        var hostingController: UIHostingController<Content>
-        @Binding var scale: CGFloat
-        @Binding var lastScale: CGFloat
-        
-        init(hostingController: UIHostingController<Content>, scale: Binding<CGFloat>, lastScale: Binding<CGFloat>) {
-            self.hostingController = hostingController
-            self._scale = scale
-            self._lastScale = lastScale
-        }
-        
-        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-            return hostingController.view
-        }
-        
-        func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
-            self.scale = scale
-            self.lastScale = scale
-        }
-    }
-}
-
+// InfoOverlayContent and other supporting views remain unchanged...
 // MARK: - Info Overlay Komponente
 struct InfoOverlayContent: View {
     let locations: [SavedLocation]

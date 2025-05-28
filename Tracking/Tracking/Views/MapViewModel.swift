@@ -7,7 +7,7 @@ import SwiftUI
 import CoreLocation
 
 class MapViewModel: ObservableObject {
-    @Published var markers: [MapMarker] = []
+    @Published var markers: [MarkerItem] = []
     @Published var routeCoordinates: [CLLocationCoordinate2D] = []
     @Published var distance: Double?
     @Published var duration: TimeInterval?
@@ -26,7 +26,7 @@ class MapViewModel: ObservableObject {
     func update(with locations: [SavedLocation]) async {
         // Marker erstellen
         markers = locations.enumerated().map { index, location in
-            let type: MapMarker.MarkerType = {
+            let type: MarkerItem.MarkerType = {
                 if locations.count > 1 {
                     if index == 0 { return .start }
                     if index == locations.count - 1 { return .end }
@@ -34,7 +34,7 @@ class MapViewModel: ObservableObject {
                 return .normal
             }()
             
-            return MapMarker(
+            return MarkerItem(
                 coordinate: CLLocationCoordinate2D(
                     latitude: location.latitude,
                     longitude: location.longitude
@@ -118,7 +118,7 @@ class MapViewModel: ObservableObject {
 }
 
 // MARK: - Modelle
-struct MapMarker: Identifiable {
+struct MarkerItem: Identifiable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
     let type: MarkerType
