@@ -31,6 +31,8 @@ struct LiveLocationView: View {
     
     @State private var isTrackingPaused = false
     
+    @State private var lastSavedLocation: CLLocation? = nil
+    
     var body: some View {
         VStack {
             // MARK: GPS-Werte anzeigen
@@ -208,6 +210,12 @@ struct LiveLocationView: View {
     }
 
     private func saveCurrentLocation(location: CLLocation) {
+        // Prüfen, ob sich die Position merklich verändert hat (z. B. mehr als 5 Meter)
+        if let last = lastSavedLocation, location.distance(from: last) < 5 {
+            print("⚠️ Position hat sich nicht wesentlich verändert – kein Speichern.")
+            return
+        }
+        
         let newLocation = SavedLocation(context: viewContext)
         newLocation.id = UUID()
         newLocation.latitude = location.coordinate.latitude
@@ -217,7 +225,7 @@ struct LiveLocationView: View {
         
         newLocation.comment = comment
         if let image = previewImage, let data = image.jpegData(compressionQuality: 0.8) {
-                    newLocation.imageData = data
+            newLocation.imageData = data
         }
 
         if let session = currentSession {
@@ -232,6 +240,7 @@ struct LiveLocationView: View {
 
         do {
             try viewContext.save()
+            lastSavedLocation = location // Update letzte gespeicherte Position
             
             if currentSession != nil {
                 print("✅ Punkt in Session gespeichert.")
