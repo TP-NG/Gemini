@@ -10,9 +10,7 @@ struct MapView: View {
     let locationsToDisplay: [SavedLocation]
     let mapTitle: String
     
-    
     @State private var selectedImage: UIImage?
-    
     
     @StateObject private var viewModel = MapViewModel()
     @State private var cameraPosition: MapCameraPosition
@@ -43,10 +41,9 @@ struct MapView: View {
             // Kartenansicht mit explizitem Inhaltstyp
             Map(position: $cameraPosition) {
                 ForEach(viewModel.markers) { marker in
-                    if marker.isIntermediate {
-                        // Marker ohne Bild überspringen
-                    } else if let imageData = marker.imageData,
-                              let uiImage = UIImage(data: imageData) {
+                    if let imageData = marker.imageData,  // ZUERST Bilder prüfen
+                       let uiImage = UIImage(data: imageData)
+                    {
                         Annotation(marker.title, coordinate: marker.coordinate) {
                             Image(uiImage: uiImage)
                                 .resizable()
@@ -56,7 +53,8 @@ struct MapView: View {
                                     selectedImage = uiImage
                                 }
                         }
-                    } else {
+                    }
+                    else if !marker.isIntermediate {  // Dann Intermediate ausschließen
                         Marker(
                             marker.title,
                             systemImage: marker.icon,

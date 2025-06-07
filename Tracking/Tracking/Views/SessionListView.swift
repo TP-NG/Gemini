@@ -8,7 +8,11 @@ import CoreData
 
 struct SessionListView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    
+    @State private var selectedSession: TrackingSession?
+    @State private var selectedLocation: SavedLocation?
+    @State private var showDetailSheet = false
+    
     @FetchRequest(sortDescriptors: [SortDescriptor(\TrackingSession.startTime, order: .reverse)])
     private var sessions: FetchedResults<TrackingSession>
 
@@ -39,13 +43,13 @@ struct SessionListView: View {
                         }
                         .swipeActions(edge: .trailing) {
                           
-                                Button {
-                                    // Hier könntest du später eine Logik einfügen, um z. B. ein Sheet zu öffnen
-                                    print("Details anzeigen für Session: \(session.name ?? "Unbenannt")")
-                                } label: {
-                                    Label("Details", systemImage: "info.circle")
-                                }
-                                .tint(.blue)
+                            Button {
+                                selectedSession = session
+                                showDetailSheet = true
+                            } label: {
+                                Label("Details", systemImage: "info.circle")
+                            }
+                            .tint(.blue)
                                 
                                 Button(role: .destructive) {
                                     // Löschen der Einträge über deleteSessions
@@ -101,13 +105,13 @@ struct SessionListView: View {
                         }
                         .swipeActions(edge: .trailing) {
                             
-                                Button {
-                                    // Hier kannst du später eine Detailanzeige einfügen
-                                    print("Details anzeigen für Standort: \(location.latitude), \(location.longitude)")
-                                } label: {
-                                    Label("Details", systemImage: "info.circle")
-                                }
-                                .tint(.blue)
+                            Button {
+                                selectedLocation = location
+                                showDetailSheet = true
+                            } label: {
+                                Label("Details", systemImage: "info.circle")
+                            }
+                            .tint(.blue)
                                 
                                 Button(role: .destructive) {
                                     if let index = standaloneLocations.firstIndex(of: location) {
@@ -122,9 +126,20 @@ struct SessionListView: View {
                     .onDelete(perform: deleteStandaloneLocations) // Swipe zum Löschen für einzelne Orte
                 }
             }
+            .sheet(isPresented: $showDetailSheet, onDismiss: {
+                selectedSession = nil
+                selectedLocation = nil
+            }) {
+                if let session = selectedSession {
+                    SessionDetailView(session: session)
+                } else if let location = selectedLocation {
+                    LocationDetailView(location: location)
+                }
+            }
             //.navigationTitle("Gespeicherte Orte & Routen")
         }
     }
+    
 
     private func deleteSessions(offsets: IndexSet) {
         withAnimation {

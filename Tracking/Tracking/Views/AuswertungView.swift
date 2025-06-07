@@ -1,7 +1,5 @@
-//
 //  AuswertungView.swift
 //  Tracking
-//
 
 import SwiftUI
 import Charts
@@ -9,41 +7,18 @@ import CoreData
 
 struct AuswertungView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \TrackingSession.startTime, ascending: false)]
+        sortDescriptors: [NSSortDescriptor(keyPath: \TrackingSession.startTime, ascending: false)],
+        animation: .default
     ) var sessions: FetchedResults<TrackingSession>
-
+    
     @State private var selectedZeitraum: ZeitFilter = .monat
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    ZeitraumFilterView(selected: $selectedZeitraum)
-                    
-                    //
-                    ZusammenfassungView(sessions: filteredSessions)
-                    
-                    VerlaufDiagrammView(sessions: filteredSessions)
-                    
-                    SessionListeView(sessions: filteredSessions)
-                }
-                .padding()
-            }
-            .navigationTitle("Auswertung")
-            .onAppear {
-                // Alle Sessions aktualisieren
-                sessions.forEach { $0.updateMetrics() }
-                try? viewContext.save()
-            }
-        }
-    }
-
-    var filteredSessions: [TrackingSession] {
+    @State private var diagrammDaten: [ChartDataPoint] = []
+    
+    private var filteredSessions: [TrackingSession] {
         let now = Date()
         let calendar = Calendar.current
-
+        
         switch selectedZeitraum {
         case .monat:
             return sessions.filter {
@@ -57,313 +32,238 @@ struct AuswertungView: View {
             return Array(sessions)
         }
     }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ZeitraumFilterView(selected: $selectedZeitraum)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowBackground(Color.clear)
+                }
+                
+                Section("Zusammenfassung") {
+                    ZusammenfassungView(sessions: filteredSessions)
+                }
+                
+                Section("Verlauf") {
+                    VerlaufDiagrammView(daten: diagrammDaten)
+                        .frame(height: 250)
+                        .padding(.vertical, 8)
+                }
+                
+                Section("Einzelsessions") {
+                    ForEach(filteredSessions) { session in
+                        SessionRow(session: session)
+                    }
+                }
+            }
+            .navigationTitle("Auswertung")
+            .onAppear {
+                sessions.forEach { $0.updateMetrics() }
+                try? viewContext.save()
+                berechneDiagrammDaten()
+            }
+            .onChange(of: selectedZeitraum) { _ in
+                berechneDiagrammDaten()
+            }
+        }
+    }
+    
+    private func berechneDiagrammDaten() {
+        let gruppierteDaten = Dictionary(
+            grouping: filteredSessions,
+            by: { Calendar.current.startOfDay(for: $0.startTime ?? Date()) }
+        )
+        
+        diagrammDaten = gruppierteDaten
+            .map { key, values in
+                ChartDataPoint(
+                    datum: key,
+                    distanz: values.reduce(0) { $0 + $1.totalDistance }
+                )
+            }
+            .sorted(by: { $0.datum < $1.datum })
+    }
+}
+
+// MARK: - Hilfsstrukturen
+struct ChartDataPoint: Identifiable {
+    let id = UUID()
+    let datum: Date
+    let distanz: Double
+    
+    var distanzKm: Double { distanz / 1000 }
 }
 
 enum ZeitFilter: String, CaseIterable, Identifiable {
     case monat = "Monat"
     case woche = "Woche"
     case alle = "Alle"
-
+    
     var id: String { self.rawValue }
 }
 
-
-
-// MARK: integrated Views
-
-struct VerlaufDiagrammView: View {
-    let sessions: [TrackingSession]
-    // Hilfsfunktion zum Gruppieren
-    private func groupedSessions() -> [Date: Double] {
-        var dailyTotals: [Date: Double] = [:]
-        let calendar = Calendar.current
-        
-        for session in sessions {
-            guard let date = session.startTime, session.totalDistance > 0 else { continue }
-            let dayStart = calendar.startOfDay(for: date)
-            dailyTotals[dayStart, default: 0] += session.totalDistance
-        }
-        
-        return dailyTotals
-    }
-    
-    private var totalDistance: Double {
-        let distance = sessions.reduce(0) { $0 + $1.totalDistance }
-        
-        print("Total Distance in meters: \(distance)")
-        print("Sessions count: \(sessions.count)")
-        sessions.forEach { session in
-            print("Session '\(session.name ?? "Unbenannt")': \(session.totalDistance)m")
-        }
-        return distance
-    }
-    
-    // Hilfsfunktion für konsistente Umrechnung
-    private func km(from meters: Double) -> Double {
-        meters / 1000
-    }
-    
-    var body: some View {
-        Chart {
-            // Zuerst die einzelnen Sessions (für die farbigen Balken)
-            ForEach(sessions) { session in
-                if let start = session.startTime, session.totalDistance > 0 {
-                    BarMark(
-                        x: .value("Datum", start, unit: .day),
-                        y: .value("Distanz", km(from: session.totalDistance))
-                    )
-                    .foregroundStyle(by: .value("Session", session.name ?? "Unbenannt"))
-                }
-            }
-            
-            // Dann die Annotationen mit den Tages-Totals
-            ForEach(Array(groupedSessions().keys.sorted()), id: \.self) { date in
-                if let total = groupedSessions()[date] {
-                    RuleMark(
-                        x: .value("Datum", date, unit: .day)
-                    )
-                    .annotation(position: .top) {
-                        Text("\(km(from: total), specifier: "%.2f") km")
-                            .font(.caption2)
-                            .padding(4)
-                            .background(Color.gray.opacity(0.9))
-                            .cornerRadius(4)
-                    }
-                }
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { value in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel(format: .dateTime.day().month())
-            }
-        }
-        .frame(height: 300)
-        .padding()
-        .chartForegroundStyleScale(range: [.blue, .green, .orange]) // Farben festlegen
-        .chartOverlay { proxy in
-            GeometryReader { geometry in
-                Rectangle().fill(.clear).contentShape(Rectangle())
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                let x = value.location.x - geometry[proxy.plotAreaFrame].origin.x
-                                if let date: Date = proxy.value(atX: x) {
-                                    // Hier können Sie den ausgewählten Tag speichern
-                                }
-                            }
-                    )
-            }
-        }
-    }
-}
+// MARK: - Subviews
 struct ZeitraumFilterView: View {
     @Binding var selected: ZeitFilter
-
+    
     var body: some View {
         Picker("Zeitraum", selection: $selected) {
-            ForEach(ZeitFilter.allCases, id: \ .self) { filter in
+            ForEach(ZeitFilter.allCases) { filter in
                 Text(filter.rawValue).tag(filter)
             }
         }
         .pickerStyle(.segmented)
+        .padding(.vertical, 8)
     }
 }
 
-struct SessionListeView: View {
-    let sessions: [TrackingSession]
-    
-    // Hilfsfunktion zur Umrechnung in km
-    private func km(from meters: Double) -> Double {
-        meters / 1000
-    }
+struct VerlaufDiagrammView: View {
+    let daten: [ChartDataPoint]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Einzelsessions")
-                .font(.headline)
-                .padding(.bottom, 4)
+        Chart(daten) { punkt in
+            LineMark(
+                x: .value("Datum", punkt.datum, unit: .day),
+                y: .value("Distanz", punkt.distanzKm)
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(.blue)
             
-            ForEach(sessions, id: \.self) { session in
-                HStack {
-                    Text(session.name ?? "Unbenannt")
-                        .font(.subheadline)
-                    
-                    Spacer()
-                    
-                    Text("\(km(from: session.totalDistance), specifier: "%.1f") km")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 4)
+            PointMark(
+                x: .value("Datum", punkt.datum, unit: .day),
+                y: .value("Distanz", punkt.distanzKm)
+            )
+            .symbol(Circle().strokeBorder(lineWidth: 2))
+            .foregroundStyle(.white)
+            .annotation(position: .top) {
+                Text("\(punkt.distanzKm.formatted(.number.precision(.fractionLength(1)))) km")
+                    .font(.system(size: 9))
+                    .padding(2)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(4)
             }
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(10)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day)) { value in
+                if let date = value.as(Date.self) {
+                    AxisValueLabel(format: .dateTime.day().month(.narrow))
+                }
+                AxisGridLine()
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading)
+        }
     }
 }
 
-// Metriken vor der Anzeige aktualisieren
 struct ZusammenfassungView: View {
     let sessions: [TrackingSession]
     
-    // Berechnete Werte
-    private var totalDistance: Double {
-        let distance = sessions.reduce(0) { $0 + $1.totalDistance }
-        
-        print("Total Distance in meters: \(distance)")
-        print("Sessions count: \(sessions.count)")
-        sessions.forEach { session in
-            print("Session '\(session.name ?? "Unbenannt")': \(session.totalDistance)m")
-        }
-        return distance
-    }
+    private var totalDistance: Double { sessions.reduce(0) { $0 + $1.totalDistance } }
+    private var totalDuration: TimeInterval { sessions.reduce(0) { $0 + $1.totalDuration } }
+    private var averageSpeed: Double { totalDuration > 0 ? totalDistance / totalDuration : 0 }
+    private var totalAscent: Double { sessions.reduce(0) { $0 + ($1.totalAscent ?? 0) } }
+    private var totalDescent: Double { sessions.reduce(0) { $0 + ($1.totalDescent ?? 0) } }
     
-    private var totalDuration: TimeInterval {
-        sessions.reduce(0) { $0 + $1.totalDuration }
-    }
-    
-    // Korrekte Durchschnittsgeschwindigkeit (Gesamtstrecke / Gesamtzeit)
-    private var averageSpeed: Double {
-        guard totalDuration > 0 else { return 0 }
-        return totalDistance / totalDuration
-    }
-    
-    private var totalAscent: Double {
-        sessions.reduce(0) { $0 + ($1.totalAscent ?? 0) }
-    }
-
-    private var totalDescent: Double {
-        sessions.reduce(0) { $0 + ($1.totalDescent ?? 0) }
-    }
-
-    private var minAltitude: Double {
-        sessions.compactMap { $0.minAltitude }.min() ?? 0
-    }
-
-    private var maxAltitude: Double {
-        sessions.compactMap { $0.maxAltitude }.max() ?? 0
-    }
+    private let gridItems = [GridItem(.flexible()), GridItem(.flexible())]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Zusammenfassung")
-                .font(.headline)
+        LazyVGrid(columns: gridItems, alignment: .leading, spacing: 12) {
+            MetricView(
+                icon: "point.topleft.down.curvedto.point.bottomright.up",
+                title: "Strecke",
+                value: totalDistance > 0 ? "\( (totalDistance / 1000).formatted(.number.precision(.fractionLength(2))) ) km" : "-"
+            )
             
-            HStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Route Details")
-                        .font(.title2.bold())
-                        .padding(.bottom, 5)
-                    
-                    InfoRow(
-                        icon: "point.topleft.down.curvedto.point.bottomright.up",
-                        label: "Streckenlänge",
-                        value: totalDistance != 0 ? String(format: "%.2f km", totalDistance / 1000) : "–"
-                    )
-                    
-                    InfoRow(
-                        icon: "stopwatch",
-                        label: "Dauer",
-                        value: totalDuration != 0 ? formattedDuration(totalDuration) : "–"
-                    )
-                    
-                    InfoRow(
-                        icon: "speedometer",
-                        label: "Ø Geschwindigkeit",
-                        value: formattedSpeed
-                    )
-                    
-                    InfoRow(
-                        icon: "arrow.up.right",
-                        label: "Aufstieg",
-                        value: totalAscent > 0 ? String(format: "%.0f m", totalAscent) : "–"
-                    )
-
-                    InfoRow(
-                        icon: "arrow.down.right",
-                        label: "Abstieg",
-                        value: totalDescent > 0 ? String(format: "%.0f m", totalDescent) : "–"
-                    )
-
-                    InfoRow(
-                        icon: "arrowtriangle.down.circle",
-                        label: "Min. Höhe",
-                        value: minAltitude > 0 ? String(format: "%.0f m", minAltitude) : "–"
-                    )
-
-                    InfoRow(
-                        icon: "arrowtriangle.up.circle",
-                        label: "Max. Höhe",
-                        value: maxAltitude > 0 ? String(format: "%.0f m", maxAltitude) : "–"
-                    )
-                }
-                
-            }
+            MetricView(
+                icon: "stopwatch",
+                title: "Dauer",
+                value: totalDuration > 0 ? formattedDuration(totalDuration) : "-"
+            )
+            
+            MetricView(
+                icon: "speedometer",
+                title: "Ø Geschw.",
+                value: "\((averageSpeed * 3.6).formatted(.number.precision(.fractionLength(1)))) km/h"
+            )
+            
+            MetricView(
+                icon: "arrow.up.right",
+                title: "Aufstieg",
+                value: totalAscent > 0 ? "\(totalAscent.formatted(.number.precision(.fractionLength(0)))) m" : "-"
+            )
+            
+            MetricView(
+                icon: "arrow.down.right",
+                title: "Abstieg",
+                value: totalDescent > 0 ? "\(totalDescent.formatted(.number.precision(.fractionLength(0)))) m" : "-"
+            )
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(10)
-    }
-    
-    // MARK: - Formatierung
-    private var formattedDistance: String {
-        if totalDistance < 1000 {
-            return "\(Int(totalDistance)) m"
-        } else {
-            return String(format: "%.1f km", totalDistance / 1000)
-        }
+        .padding(.vertical, 8)
     }
     
     private func formattedDuration(_ duration: TimeInterval) -> String {
-        print(duration)
-      let formatter = DateComponentsFormatter()
-      formatter.allowedUnits = [.hour, .minute, .second]
-      formatter.unitsStyle = .abbreviated
-      return formatter.string(from: duration) ?? "0s"
-    }
-    
-    private var formattedDuration: String {
-        let formatter = DateComponentsFormatter()
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        let seconds = Int(duration) % 60
         
-        if totalDuration >= 3600 {
-            // Format: 1h 5m 30s
-            formatter.allowedUnits = [.hour, .minute, .second]
-            formatter.unitsStyle = .abbreviated
+        if hours > 0 {
+            return String(format: "%dh %02dm", hours, minutes)
         } else {
-            // Format: 1m 10s
-            formatter.allowedUnits = [.minute, .second]
-            formatter.unitsStyle = .short
+            return String(format: "%dm %02ds", minutes, seconds)
         }
-        
-        /*
-        print("""
-        Test-Ergebnisse:
-        - Berechnete Distanz: \(totalDistance)m
-        - Erwartete Duration: \(totalDuration)m
-        """)
-        */
-        
-        // Spezialfall: Weniger als 1 Minute
-        if totalDuration < 60 {
-            return "\(Int(totalDuration))s"
-        }
-        let tmp = String(format: "%.1f km/h", totalDuration * 3.6)
-        print(tmp)
-        
-        return formatter.string(from: totalDuration) ?? "0s"
     }
+}
+
+struct MetricView: View {
+    let icon: String
+    let title: String
+    let value: String
     
-    private var formattedSpeed: String {
-        /*
-        print("""
-        Test-Ergebnisse:
-        - averageSpeed: \(averageSpeed)m
-        """)
-        */
-        
-        return String(format: "%.1f km/h", averageSpeed * 3.6)
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(.accentColor)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.body)
+            }
+        }
+    }
+}
+
+struct SessionRow: View {
+    let session: TrackingSession
+    
+    private var distanceKm: Double { session.totalDistance / 1000 }
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading) {
+                Text(session.name ?? "Unbenannte Session")
+                    .font(.subheadline)
+                
+                if let start = session.startTime {
+                    Text(start.formatted(date: .abbreviated, time: .omitted))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Text("\(distanceKm.formatted(.number.precision(.fractionLength(1)))) km")
+                .font(.callout)
+        }
+        .padding(.vertical, 4)
     }
 }

@@ -16,7 +16,8 @@ struct LiveLocationView: View {
     @State private var isTrackingActive: Bool = false // Zustand, ob eine Tracking-Session aktiv ist
     @State private var currentSession: TrackingSession?
 
-    @State private var comment: String = ""
+    @State private var sessionName: String = ""
+    @State private var coment: String = ""
     
     @State private var previewImage: UIImage? = nil // Placeholder für später
     
@@ -61,17 +62,23 @@ struct LiveLocationView: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                 }
+                // MARK: Seesion
+                VStack(alignment: .leading) {
+                    Text("Kommentar:")
+                    TextField("Notitz zum Standord", text: $coment)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
             }
             .padding()
             .background(Color.blue.opacity(0.2))
             .cornerRadius(10)
             .padding(.horizontal)
             
-            // MARK: Einzel-Speichern
-            // Kommentar
+            // MARK: Seesion
             VStack(alignment: .leading) {
-                Text("Kommentar/Session Name:")
-                TextField("Notiz zum Standort", text: $comment)
+                Text("Session Name:")
+                TextField("Geben Sie einen Namen für Ihre Session ein...", text: $sessionName)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
             .padding(.horizontal)
@@ -128,6 +135,8 @@ struct LiveLocationView: View {
             if isTrackingActive {
                 LocationProgressView(current: elapsedTime, total: interval)
             }
+            
+            Spacer()
             
             // Kamera Button + Vorschau
             VStack(spacing: 10) {
@@ -202,7 +211,7 @@ struct LiveLocationView: View {
             currentSession?.updateMetrics() // ✅ Neue Berechnung
             try viewContext.save()
             print("✅ Session beendet und Daten gespeichert.")
-            comment = ""
+            sessionName = ""
             previewImage = nil
         } catch {
             print("Fehler beim Speichern der beendeten Session: \(error)")
@@ -223,7 +232,8 @@ struct LiveLocationView: View {
         newLocation.altitude = location.altitude
         newLocation.timestamp = Date()
         
-        newLocation.comment = comment
+        newLocation.comment = coment
+        
         if let image = previewImage, let data = image.jpegData(compressionQuality: 0.8) {
             newLocation.imageData = data
         }
@@ -232,7 +242,7 @@ struct LiveLocationView: View {
             newLocation.isStandalone = false
             session.addToLocations(newLocation)
             if currentSession?.name == nil || currentSession?.name?.isEmpty == true {
-                currentSession?.name = comment
+                currentSession?.name = sessionName
             }
         } else {
             newLocation.isStandalone = true
@@ -247,7 +257,8 @@ struct LiveLocationView: View {
                 previewImage = nil
             } else {
                 print("✅ Einzelpunkt gespeichert.")
-                comment = ""
+                sessionName = ""
+                coment = ""
                 previewImage = nil
             }
         } catch {
