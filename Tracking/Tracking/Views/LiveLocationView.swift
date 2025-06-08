@@ -62,13 +62,12 @@ struct LiveLocationView: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                 }
-                // MARK: Seesion
+                
                 VStack(alignment: .leading) {
                     Text("Kommentar:")
                     TextField("Notitz zum Standord", text: $coment)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
-                .padding(.horizontal)
             }
             .padding()
             .background(Color.blue.opacity(0.2))
@@ -129,6 +128,18 @@ struct LiveLocationView: View {
                                 .contentTransition(.symbolEffect(.replace))
                     }
                     .padding()
+                    
+                    // Save
+                    Button(action: {
+                        if let currentLocation = locationManager.currentLocation {
+                            saveCurrentLocation(location: currentLocation)
+                        }
+                    }) {
+                        Image(systemName: "square.and.arrow.down.fill")
+                                .symbolEffect(.bounce, value: isTrackingPaused)
+                                .contentTransition(.symbolEffect(.replace))
+                    }
+                    .padding()
                 }
             }
             
@@ -182,6 +193,14 @@ struct LiveLocationView: View {
         }
     }
 
+    private func saveLocationSession() {
+        
+           if let currentLocation = locationManager.currentLocation {
+                saveCurrentLocation(location: currentLocation)
+            }
+        
+    }
+    
     private func startNewTrackingSession() {
         let newSession = TrackingSession(context: viewContext)
         newSession.id = UUID()
@@ -219,8 +238,8 @@ struct LiveLocationView: View {
     }
 
     private func saveCurrentLocation(location: CLLocation) {
-        // Prüfen, ob sich die Position merklich verändert hat (z. B. mehr als 5 Meter)
-        if let last = lastSavedLocation, location.distance(from: last) < 5 {
+        // Prüfen, ob sich die Position merklich verändert hat (z. B. mehr als 2 Meter)
+        if let last = lastSavedLocation, location.distance(from: last) < 2 {
             print("⚠️ Position hat sich nicht wesentlich verändert – kein Speichern.")
             return
         }

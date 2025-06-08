@@ -42,14 +42,14 @@ struct AuswertungView: View {
                         .listRowBackground(Color.clear)
                 }
                 
-                Section("Zusammenfassung") {
-                    ZusammenfassungView(sessions: filteredSessions)
-                }
-                
                 Section("Verlauf") {
                     VerlaufDiagrammView(daten: diagrammDaten)
                         .frame(height: 250)
                         .padding(.vertical, 8)
+                }
+                
+                Section("Zusammenfassung") {
+                    ZusammenfassungView(sessions: filteredSessions)
                 }
                 
                 Section("Einzelsessions") {
