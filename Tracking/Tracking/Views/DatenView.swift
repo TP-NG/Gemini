@@ -1,4 +1,3 @@
-
 //
 //  DatenView.swift
 //  Tracking
@@ -13,16 +12,22 @@ struct DatenView: View {
     
     @State private var nurMitBildAnzeigen = true
     
+    @State private var currentPage = 0
+    private let itemsPerPage = 20
+    
     var body: some View {
         NavigationStack {
             
             Toggle("Nur Einträge mit Bild anzeigen", isOn: $nurMitBildAnzeigen)
                 .padding()
             
+            let filteredLocations = locations.filter { location in
+                !nurMitBildAnzeigen || (location.imageData != nil && UIImage(data: location.imageData!) != nil)
+            }
+            let pagedLocations = Array(filteredLocations.dropFirst(currentPage * itemsPerPage).prefix(itemsPerPage))
+            
             List {
-                ForEach(locations.filter { location in
-                    !nurMitBildAnzeigen || (location.imageData != nil && UIImage(data: location.imageData!) != nil)
-                }) { location in
+                ForEach(pagedLocations) { location in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(location.timestamp?.formatted() ?? "Unbekanntes Datum")
                             .font(.headline)
@@ -57,6 +62,24 @@ struct DatenView: View {
                     .padding(.vertical, 8)
                 }
             }
+            HStack {
+                Button("Zurück") {
+                    if currentPage > 0 {
+                        currentPage -= 1
+                    }
+                }
+                .disabled(currentPage == 0)
+
+                Spacer()
+
+                Button("Weiter") {
+                    if (currentPage + 1) * itemsPerPage < filteredLocations.count {
+                        currentPage += 1
+                    }
+                }
+                .disabled((currentPage + 1) * itemsPerPage >= filteredLocations.count)
+            }
+            .padding()
             .navigationTitle("Alle Daten")
             .sheet(item: $selectedImage) { image in
                 ImageDetailView(image: image)

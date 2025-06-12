@@ -13,8 +13,8 @@ struct SessionListView: View {
     @State private var selectedLocation: SavedLocation?
     @State private var showDetailSheet = false
     
-    @State private var showSessions = true
-    @State private var showLocations = true
+    @State private var showSessions = false
+    @State private var showLocations = false
     
     @FetchRequest(sortDescriptors: [SortDescriptor(\TrackingSession.startTime, order: .reverse)])
     private var sessions: FetchedResults<TrackingSession>
@@ -29,73 +29,163 @@ struct SessionListView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                YearMonthPickerView(selectedDate: $selectedMonth)
-                
-                LazyVStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Gespeicherte Orte & Routen")
+                    .font(.system(size: 24, weight: .bold))
+                    .padding(.horizontal)
+                ScrollView {
+                    YearMonthPickerView(selectedDate: $selectedMonth)
                     
-                    // Sessions Überschrift als Button
-                    Button(action: {
-                        withAnimation { showSessions.toggle() }
-                    }) {
-                        HStack {
-                            Image(systemName: showSessions ? "chevron.down" : "chevron.right")
-                            Text("Sessions")
-                                .font(.title3)
-                                .bold()
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        
+                        // Sessions Überschrift als Button
+                        Button(action: {
+                            withAnimation { showSessions.toggle() }
+                        }) {
+                            HStack {
+                                Image(systemName: showSessions ? "chevron.down" : "chevron.right")
+                                Text("Sessions")
+                                    .font(.title3)
+                                    .bold()
+                            }
+                            .padding(.horizontal)
+                            .foregroundColor(.primary)
                         }
-                        .padding(.horizontal)
-                        .foregroundColor(.primary)
-                    }
-                    
-                    // Sessions Liste
-                    if showSessions {
-                        ForEach(filteredGroupedSessions.sorted(by: { $0.key > $1.key }), id: \.key) { month, sessionsInMonth in
-                            Text("🗓 \(month)")
-                                .font(.title3)
-                                .bold()
-                                .padding(.horizontal)
-                                .foregroundColor(.primary)
-                            
-                            ForEach(sessionsInMonth) { session in
+                        
+                        // Sessions Liste
+                        if showSessions {
+                            ForEach(filteredGroupedSessions.sorted(by: { $0.key > $1.key }), id: \.key) { month, sessionsInMonth in
+                                Text("🗓 \(month)")
+                                    .font(.title3)
+                                    .bold()
+                                    .padding(.horizontal)
+                                    .foregroundColor(.primary)
+                                
+                                ForEach(sessionsInMonth) { session in
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                        
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(session.name ?? "Unbenannte Session")
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                            
+                                            if let date = session.startTime {
+                                                Text(date.formatted(date: .abbreviated, time: .shortened))
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        .padding()
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        
+                                        NavigationLink("", destination: MapView(
+                                            locationsToDisplay: session.locationsArray,
+                                            mapTitle: session.name ?? "Session Details"
+                                        ))
+                                        .opacity(0)
+                                    }
+                                    .frame(height: 80)
+                                    .padding(.horizontal)
+                                    .contextMenu {
+                                        Button {
+                                            selectedSession = session
+                                            showDetailSheet = true
+                                        } label: {
+                                            Label("Details", systemImage: "info.circle")
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            if let index = sessions.firstIndex(of: session) {
+                                                deleteSessions(offsets: IndexSet(integer: index))
+                                            }
+                                        } label: {
+                                            Label("Löschen", systemImage: "trash")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        
+                        // Einzelorte Überschrift als Button
+                        Button(action: {
+                            withAnimation { showLocations.toggle() }
+                        }) {
+                            HStack {
+                                Image(systemName: showLocations ? "chevron.down" : "chevron.right")
+                                Text("Einzelne Orte")
+                                    .font(.title3)
+                                    .bold()
+                            }
+                            .padding(.horizontal)
+                            .foregroundColor(.primary)
+                        }
+                        
+                        // Einzelorte Liste
+                        if showLocations {
+                            ForEach(filteredStandaloneLocations) { location in
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(Color(.systemBackground))
                                         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                                     
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(session.name ?? "Unbenannte Session")
-                                            .font(.headline)
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Breite: \(location.latitude), Länge: \(location.longitude)")
+                                            .font(.body)
                                             .foregroundColor(.primary)
                                         
-                                        if let date = session.startTime {
+                                        if location.altitude > 0 {
+                                            InfoRow(
+                                                icon: "mountain.2.fill",
+                                                label: "Höhe",
+                                                value: String(format: "%.0f m", location.altitude)
+                                            )
+                                        }
+                                        
+                                        if let date = location.timestamp {
                                             Text(date.formatted(date: .abbreviated, time: .shortened))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
+                                        }
+                                        
+                                        if let comment = location.comment, !comment.isEmpty {
+                                            Text("🗒️ \(comment)")
+                                                .font(.subheadline)
+                                                .foregroundColor(.primary)
+                                        }
+                                        
+                                        if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(height: 150)
+                                                .cornerRadius(8)
                                         }
                                     }
                                     .padding()
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     
                                     NavigationLink("", destination: MapView(
-                                        locationsToDisplay: session.locationsArray,
-                                        mapTitle: session.name ?? "Session Details"
+                                        locationsToDisplay: [location],
+                                        mapTitle: location.comment ?? "Gespeicherter Ort"
                                     ))
                                     .opacity(0)
                                 }
-                                .frame(height: 80)
                                 .padding(.horizontal)
                                 .contextMenu {
                                     Button {
-                                        selectedSession = session
+                                        selectedLocation = location
                                         showDetailSheet = true
                                     } label: {
                                         Label("Details", systemImage: "info.circle")
                                     }
                                     
                                     Button(role: .destructive) {
-                                        if let index = sessions.firstIndex(of: session) {
-                                            deleteSessions(offsets: IndexSet(integer: index))
+                                        if let index = standaloneLocations.firstIndex(of: location) {
+                                            deleteStandaloneLocations(offsets: IndexSet(integer: index))
                                         }
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
@@ -104,106 +194,23 @@ struct SessionListView: View {
                             }
                         }
                     }
-                    
-                    
-                    // Einzelorte Überschrift als Button
-                    Button(action: {
-                        withAnimation { showLocations.toggle() }
-                    }) {
-                        HStack {
-                            Image(systemName: showLocations ? "chevron.down" : "chevron.right")
-                            Text("Einzelne Orte")
-                                .font(.title3)
-                                .bold()
-                        }
-                        .padding(.horizontal)
-                        .foregroundColor(.primary)
-                    }
-                    
-                    // Einzelorte Liste
-                    if showLocations {
-                        ForEach(filteredStandaloneLocations) { location in
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Breite: \(location.latitude), Länge: \(location.longitude)")
-                                        .font(.body)
-                                        .foregroundColor(.primary)
-
-                                    if location.altitude > 0 {
-                                        InfoRow(
-                                            icon: "mountain.2.fill",
-                                            label: "Höhe",
-                                            value: String(format: "%.0f m", location.altitude)
-                                        )
-                                    }
-
-                                    if let date = location.timestamp {
-                                        Text(date.formatted(date: .abbreviated, time: .shortened))
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-
-                                    if let comment = location.comment, !comment.isEmpty {
-                                        Text("🗒️ \(comment)")
-                                            .font(.subheadline)
-                                            .foregroundColor(.primary)
-                                    }
-
-                                    if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(height: 150)
-                                            .cornerRadius(8)
-                                    }
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                                NavigationLink("", destination: MapView(
-                                    locationsToDisplay: [location],
-                                    mapTitle: location.comment ?? "Gespeicherter Ort"
-                                ))
-                                .opacity(0)
-                            }
-                            .padding(.horizontal)
-                            .contextMenu {
-                                Button {
-                                    selectedLocation = location
-                                    showDetailSheet = true
-                                } label: {
-                                    Label("Details", systemImage: "info.circle")
-                                }
-
-                                Button(role: .destructive) {
-                                    if let index = standaloneLocations.firstIndex(of: location) {
-                                        deleteStandaloneLocations(offsets: IndexSet(integer: index))
-                                    }
-                                } label: {
-                                    Label("Löschen", systemImage: "trash")
-                                }
-                            }
-                        }
+                    .padding(.vertical)
+                }
+                .sheet(isPresented: $showDetailSheet, onDismiss: {
+                    selectedSession = nil
+                    selectedLocation = nil
+                }) {
+                    if let session = selectedSession {
+                        SessionDetailView(session: session)
+                    } else if let location = selectedLocation {
+                        LocationDetailView(location: location)
                     }
                 }
-                .padding(.vertical)
+                
             }
-            .sheet(isPresented: $showDetailSheet, onDismiss: {
-                selectedSession = nil
-                selectedLocation = nil
-            }) {
-                if let session = selectedSession {
-                    SessionDetailView(session: session)
-                } else if let location = selectedLocation {
-                    LocationDetailView(location: location)
-                }
-            }
-            .navigationTitle("Gespeicherte Orte & Routen")
+            
         }
+        .navigationBarHidden(true) // Navigation Title ausblenden
     }
 
     private func deleteSessions(offsets: IndexSet) {
