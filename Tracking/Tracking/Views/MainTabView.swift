@@ -2,8 +2,6 @@
 //  MainTabView.swift
 //  Tracking
 //
-//  Created by Administrator on 22.05.25.
-//
 
 import SwiftUI
 import CoreData // Da SavedLocation ein Core Data Entity ist

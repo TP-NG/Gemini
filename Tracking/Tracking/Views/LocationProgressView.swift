@@ -2,8 +2,6 @@
 //  LocationProgressView.swift
 //  Tracking
 //
-//  Created by Administrator on 25.05.25.
-//
 
 import SwiftUI
 import CoreData

@@ -40,7 +40,9 @@ struct SessionListView: View {
                                         .foregroundColor(.gray)
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .frame(maxWidth: .infinity)
                         .swipeActions(edge: .trailing) {
                           
                             Button {
@@ -102,7 +104,9 @@ struct SessionListView: View {
                                         .cornerRadius(8)
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .frame(maxWidth: .infinity)
                         .swipeActions(edge: .trailing) {
                             
                             Button {

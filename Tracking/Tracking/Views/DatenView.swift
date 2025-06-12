@@ -3,8 +3,7 @@
 //  DatenView.swift
 //  Tracking
 //
-//  Created by Administrator on 28.05.25.
-//
+
 
 import SwiftUI
 

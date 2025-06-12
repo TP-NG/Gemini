@@ -35,140 +35,165 @@ struct LiveLocationView: View {
     @State private var lastSavedLocation: CLLocation? = nil
     
     var body: some View {
-        VStack {
-            // MARK: GPS-Werte anzeigen
-            VStack(spacing: 10) {
-                HStack {
-                    Text("Breitengrad:")
-                    Spacer()
-                    Text(String(format: "%.6f", locationManager.currentLocation?.coordinate.latitude ?? 0.0))
-                }
-                HStack {
-                    Text("Längengrad:")
-                    Spacer()
-                    Text(String(format: "%.6f", locationManager.currentLocation?.coordinate.longitude ?? 0.0))
-                }
-                
-                // Single Point
-                Button(action: {
-                    if let currentLocation = locationManager.currentLocation {
-                        saveCurrentLocation(location: currentLocation)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack {
+                    // MARK: GPS-Werte anzeigen
+                    VStack(spacing: 10) {
+                        HStack {
+                            Text("Breitengrad:")
+                            Spacer()
+                            Text(String(format: "%.6f", locationManager.currentLocation?.coordinate.latitude ?? 0.0))
+                        }
+                        HStack {
+                            Text("Längengrad:")
+                            Spacer()
+                            Text(String(format: "%.6f", locationManager.currentLocation?.coordinate.longitude ?? 0.0))
+                        }
+                        
+                        // Single Point
+                        Button(action: {
+                            if let currentLocation = locationManager.currentLocation {
+                                saveCurrentLocation(location: currentLocation)
+                            }
+                        }) {
+                            Text("Aktuelle Position speichern")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.green.opacity(0.8))
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                        }
+                        
+                        VStack(alignment: .leading) {
+                            Text("Kommentar:")
+                            TextField("Notitz zum Standord", text: $coment)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
                     }
-                }) {
-                    Text("Aktuelle Position speichern")
-                        .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.2))
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+                    
+                    // MARK: Seesion
+                    VStack(alignment: .leading) {
+                        Text("Session Name:")
+                        TextField("Geben Sie einen Namen für Ihre Session ein...", text: $sessionName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding(.horizontal)
+                    
+                    
+                    // MARK: Tracking-Steuerung
+                    // Intervall
+                    VStack(alignment: .leading) {
+                        Text("Intervall (Sekunden): \(Int(interval))")
+                        Slider(value: $interval, in: 5...30, step: 1)
+                    }
+                    .padding(.horizontal)
+                    
+                    HStack {
+                        Button(action: {
+                            isTrackingActive.toggle()
+                            if isTrackingActive {
+                                // Start Timer
+                                startProgressTimer()
+                                
+                                startNewTrackingSession()
+                            } else {
+                                progressTimer?.invalidate()
+                                endCurrentTrackingSession()
+                            }
+                        }) {
+                            Text(isTrackingActive ? "Stop Tracking" : "Start Tracking")
+                        }
                         .padding()
-                        .background(Color.green.opacity(0.8))
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
-                
-                VStack(alignment: .leading) {
-                    Text("Kommentar:")
-                    TextField("Notitz zum Standord", text: $coment)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-            }
-            .padding()
-            .background(Color.blue.opacity(0.2))
-            .cornerRadius(10)
-            .padding(.horizontal)
-            
-            // MARK: Seesion
-            VStack(alignment: .leading) {
-                Text("Session Name:")
-                TextField("Geben Sie einen Namen für Ihre Session ein...", text: $sessionName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-            }
-            .padding(.horizontal)
-            
-            
-            // MARK: Tracking-Steuerung
-            // Intervall
-            VStack(alignment: .leading) {
-                Text("Intervall (Sekunden): \(Int(interval))")
-                Slider(value: $interval, in: 5...30, step: 1)
-            }
-            .padding(.horizontal)
-            
-            HStack {
-                Button(action: {
-                    isTrackingActive.toggle()
+                        
+                        if isTrackingActive {
+                            // Pause / Continue
+                            Button(action: {
+                                // progressTimer pausieren oder weiter
+                                withAnimation(.spring()) {
+                                    isTrackingPaused.toggle()
+                                }
+                                if isTrackingPaused {
+                                    progressTimer?.invalidate() // Timer pausieren
+                                    locationManager.stopUpdatingLocation() // Standortupdates stoppen
+                                } else {
+                                    startProgressTimer() // Timer neu starten
+                                    locationManager.startUpdatingLocation() // Standortupdates fortsetzen
+                                }
+                            }) {
+                                Image(systemName: isTrackingPaused ? "play.circle.fill" : "pause.circle.fill")
+                                    .symbolEffect(.bounce, value: isTrackingPaused)
+                                    .contentTransition(.symbolEffect(.replace))
+                            }
+                            .padding()
+                            
+                            // Save
+                            Button(action: {
+                                if let currentLocation = locationManager.currentLocation {
+                                    saveCurrentLocation(location: currentLocation)
+                                }
+                            }) {
+                                Image(systemName: "square.and.arrow.down.fill")
+                                    .symbolEffect(.bounce, value: isTrackingPaused)
+                                    .contentTransition(.symbolEffect(.replace))
+                            }
+                            .padding()
+                        }
+                    }
+                    
                     if isTrackingActive {
-                        // Start Timer
-                        startProgressTimer()
+                        LocationProgressView(current: elapsedTime, total: interval)
+                    }
                     
-                        startNewTrackingSession()
-                    } else {
-                        progressTimer?.invalidate()
-                        endCurrentTrackingSession()
-                    }
-                }) {
-                    Text(isTrackingActive ? "Stop Tracking" : "Start Tracking")
-                }
-                .padding()
-                
-                if isTrackingActive {
-                    // Pause / Continue
-                    Button(action: {
-                        // progressTimer pausieren oder weiter
-                        withAnimation(.spring()) {
-                            isTrackingPaused.toggle()
-                        }
-                        if isTrackingPaused {
-                            progressTimer?.invalidate() // Timer pausieren
-                            locationManager.stopUpdatingLocation() // Standortupdates stoppen
-                        } else {
-                            startProgressTimer() // Timer neu starten
-                            locationManager.startUpdatingLocation() // Standortupdates fortsetzen
-                        }
-                    }) {
-                        Image(systemName: isTrackingPaused ? "play.circle.fill" : "pause.circle.fill")
-                                .symbolEffect(.bounce, value: isTrackingPaused)
-                                .contentTransition(.symbolEffect(.replace))
-                    }
-                    .padding()
+                    Spacer()
                     
-                    // Save
-                    Button(action: {
-                        if let currentLocation = locationManager.currentLocation {
-                            saveCurrentLocation(location: currentLocation)
+                    // Kamera Button + Vorschau
+                    VStack(spacing: 10) {
+                        // Kamera Button
+                        Button(action: { showCamera = true }) {
+                            Label("Foto aufnehmen", systemImage: "camera")
+                                .frame(maxWidth: .infinity)  // Für bessere Ausrichtung
                         }
-                    }) {
-                        Image(systemName: "square.and.arrow.down.fill")
-                                .symbolEffect(.bounce, value: isTrackingPaused)
-                                .contentTransition(.symbolEffect(.replace))
-                    }
-                    .padding()
-                }
-            }
-            
-            if isTrackingActive {
-                LocationProgressView(current: elapsedTime, total: interval)
-            }
-            
-            Spacer()
-            
-            // Kamera Button + Vorschau
-            VStack(spacing: 10) {
-                Button(action: {
-                    showCamera = true
-                }) {
-                    Label("Foto aufnehmen", systemImage: "camera")
-                }
-                .controlButton(color: .blue, isDisabled: false)
-                .padding()
-                .background(Color.gray.opacity(0.2))
-                .cornerRadius(10)
-                .controlButton(color: .blue, isDisabled: false)
-                
-                if let image = previewImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
+                        .controlButton(color: .blue, isDisabled: false)
+                        .padding()
+                        .cornerRadius(10)
+                        
+                        // Preview-Bereich mit fester Größe
+                        Group {
+                            if let image = previewImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                            } else {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo.on.rectangle")
+                                        .font(.largeTitle)
+                                        .foregroundColor(.secondary)
+                                    Text("Kein Bild ausgewählt")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxHeight: .infinity)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 200, maxHeight: 300)  // Feste Dimensionen
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
                         .padding(.horizontal)
+                    }
+                    
+                    // Sicherer Abstand am Ende
+                    Spacer(minLength: 50)
                 }
+                .frame(minHeight: geometry.size.height)
             }
             
         }
