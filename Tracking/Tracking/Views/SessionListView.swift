@@ -31,16 +31,35 @@ struct SessionListView: View {
                             locationsToDisplay: session.locationsArray,
                             mapTitle: session.name ?? "Session Details"
                         )) {
-                            VStack(alignment: .leading) {
-                                Text(session.name ?? "Unbenannte Session")
-                                
-                                if let date = session.startTime {
-                                    Text(date.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
+                            
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(session.name ?? "Unbenannte Session")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+
+                                    if let date = session.startTime {
+                                        Text(date.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                // NavigationLink transparent über den ganzen Bereich legen
+                                NavigationLink("", destination: MapView(
+                                    locationsToDisplay: session.locationsArray,
+                                    mapTitle: session.name ?? "Session Details"
+                                ))
+                                .opacity(0) // unsichtbar, aber klickbar
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: 80)
+                            .padding(.horizonta
+                            
                         }
                         .frame(maxWidth: .infinity)
                         .swipeActions(edge: .trailing) {
