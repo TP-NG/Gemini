@@ -11,12 +11,7 @@ import CoreData
 import AudioToolbox
 
 struct LiveLocationView: View {
-    enum SessionType: String, CaseIterable, Identifiable {
-        case gehen = "Gehen"
-        case motorisiert = "Motorisiert"
-        
-        var id: String { rawValue }
-    }
+
     @StateObject var locationManager = LiveLocationManager()
     @Environment(\.managedObjectContext) private var viewContext
     @State private var isTrackingActive: Bool = false // Zustand, ob eine Tracking-Session aktiv ist
