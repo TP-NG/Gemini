@@ -52,7 +52,7 @@ struct SessionDetailView: View {
                     .padding(.top, 4)
                 }
 
-                GroupBox(label: Label("Aktivität", systemImage: "figure.walk")) {
+                GroupBox(label: Label("Aktivität", systemImage: SessionType.safeFrom(session.sessionType).iconName)) {
                     VStack(alignment: .leading, spacing: 4) {
                         Label("Distanz", systemImage: "map")
                         Text("\(String(format: "%.2f", session.totalDistance / 1000)) km")
@@ -72,6 +72,27 @@ struct SessionDetailView: View {
                     .padding(.top, 4)
                 }
 
+                // Zeige Gesundheitsdaten nur für Session-Typ "Gehen"
+                if let sessionType = session.sessionType, sessionType == "Gehen" {
+                    GroupBox(label: Label("Gesundheit", systemImage: "heart.fill")) {
+                        if let steps = steps {
+                            Label("Schritte: \(steps)", systemImage: "figure.walk")
+                                .font(.subheadline)
+                        } else if let error = healthKitError {
+                            Label("Fehler: \(error)", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                                .font(.subheadline)
+                        } else {
+                            HStack {
+                                Label("Schritte: Wird geladen...", systemImage: "hourglass")
+                                Spacer()
+                                ProgressView()
+                            }
+                            .font(.subheadline)
+                        }
+                    }
+                }
+                
                 // Horizontale ScrollView für Bild-Thumbnails (Ribbon)
                 if let locations = session.locations as? Set<SavedLocation> {
                     let imageLocations = locations.filter { $0.imageData != nil }
@@ -95,26 +116,7 @@ struct SessionDetailView: View {
                     }
                 }
 
-                // Zeige Gesundheitsdaten nur für Session-Typ "Gehen"
-                if let sessionType = session.sessionType as? String, sessionType == "Gehen" {
-                    GroupBox(label: Label("Gesundheit", systemImage: "heart.fill")) {
-                        if let steps = steps {
-                            Label("Schritte: \(steps)", systemImage: "figure.walk")
-                                .font(.subheadline)
-                        } else if let error = healthKitError {
-                            Label("Fehler: \(error)", systemImage: "exclamationmark.triangle.fill")
-                                .foregroundColor(.red)
-                                .font(.subheadline)
-                        } else {
-                            HStack {
-                                Label("Schritte: Wird geladen...", systemImage: "hourglass")
-                                Spacer()
-                                ProgressView()
-                            }
-                            .font(.subheadline)
-                        }
-                    }
-                }
+
 
                 Spacer()
             }
