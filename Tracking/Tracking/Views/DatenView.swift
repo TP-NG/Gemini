@@ -62,6 +62,7 @@ struct DatenView: View {
             }
             .padding(.horizontal)
             
+            
             let filteredLocations = locations.filter { location in
                 !nurMitBildAnzeigen || (location.imageData != nil && UIImage(data: location.imageData!) != nil)
             }
@@ -120,6 +121,7 @@ struct DatenView: View {
                     }
                 }
             }
+            
             HStack {
                 Button("Zurück") {
                     if currentPage > 0 {
@@ -142,8 +144,8 @@ struct DatenView: View {
             .sheet(item: $selectedImage) { image in
                 ImageDetailView(image: image)
             }
+            .hideKeyboardOnTap()
         }
-        .hideKeyboardOnTap()
     }
     
     func aktualisiereAlleDaten() {
