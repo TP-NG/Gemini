@@ -68,10 +68,16 @@ struct SessionListView: View {
                                             .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                                         
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text(session.name ?? "Unbenannte Session")
-                                                .font(.headline)
-                                                .foregroundColor(.primary)
-                                            
+                                            // Zeige Gesundheitsdaten nur für Session-Typ "Gehen"
+                                            HStack {
+                                                
+                                                Image(systemName: SessionType.safeFrom(session.sessionType).iconName)
+                                                    .font(.title2)
+
+                                                Text(session.name ?? "Unbenannte Session")
+                                                    .font(.headline)
+                                                    .foregroundColor(.primary)
+                                            }
                                             if let date = session.startTime {
                                                 Text(date.formatted(date: .abbreviated, time: .shortened))
                                                     .font(.caption)

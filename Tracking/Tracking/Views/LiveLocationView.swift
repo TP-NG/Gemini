@@ -89,28 +89,32 @@ struct LiveLocationView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Aktivitätstyp:")
                             .font(.headline)
-                        HStack {
-                            ForEach(SessionType.allCases) { type in
-                                Button(action: {
-                                    selectedSessionType = type
-                                }) {
-                                    VStack {
-                                        Image(systemName: type == .gehen ? "figure.walk" : "car.fill")
-                                            .font(.title2)
-                                        Text(type.rawValue)
-                                            .font(.subheadline)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(SessionType.allCases) { type in
+                                    Button(action: {
+                                        selectedSessionType = type
+                                    }) {
+                                        VStack {
+                                            Image(systemName: type.iconName)
+                                                .font(.title2)
+                                            //Text(type.rawValue)
+                                            //    .font(.subheadline)
+                                        }
+                                        .padding()
+                                        .frame(width: 80, height: 80) // feste Breite sorgt für bessere Scrollbarkeit
+                                        .background(selectedSessionType == type ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                        .cornerRadius(10)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(selectedSessionType == type ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                        )
                                     }
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(selectedSessionType == type ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
-                                    .cornerRadius(10)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(selectedSessionType == type ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
-                                    )
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                     .padding(.horizontal)

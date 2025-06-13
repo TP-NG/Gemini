@@ -126,6 +126,15 @@ struct SessionDetailView: View {
         }
     }
     
+    private func activityLabel(for sessionType: String?) -> some View {
+        if let sessionType = sessionType,
+           let type = SessionType(rawValue: sessionType) {
+            return Label("Aktivität", systemImage: type.iconName)
+        } else {
+            return Label("Aktivität", systemImage: "questionmark")
+        }
+    }
+    
     // Schrittdaten aus HealthKit laden
     private func loadHealthKitSteps() {
         // Prüfen, ob HealthKit verfügbar ist
