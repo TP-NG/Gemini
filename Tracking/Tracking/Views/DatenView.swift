@@ -30,25 +30,37 @@ struct DatenView: View {
             Toggle("Nur Einträge mit Bild anzeigen", isOn: $nurMitBildAnzeigen)
                 .padding()
             
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Datensatz aktualisieren").font(.headline)
-                
-                TextField("Spaltenname", text: $feldName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                
-                TextField("Neuer Wert", text: $newValue)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                
-                TextField("Where Bedingung", text: $whereValue)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                
-                Button("Aktualisiere") {
-                    aktualisiereAlleDaten()
+            DisclosureGroup {
+                VStack(spacing: 6) {
+                    HStack {
+                        Image(systemName: "key.fill")
+                        TextField("Feldname", text: $feldName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    HStack {
+                        Image(systemName: "pencil")
+                        TextField("Neuer Wert", text: $newValue)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    HStack {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        TextField("Where-Bedingung", text: $whereValue)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    Button {
+                        aktualisiereAlleDaten()
+                    } label: {
+                        Label("Aktualisieren", systemImage: "arrow.triangle.2.circlepath.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 6)
                 }
-                .buttonStyle(.borderedProminent)
+                .padding()
+            } label: {
+                Label("Datensatz aktualisieren", systemImage: "square.and.pencil")
+                    .font(.headline)
             }
-            .padding()
-            .hideKeyboardOnTap()
+            .padding(.horizontal)
             
             let filteredLocations = locations.filter { location in
                 !nurMitBildAnzeigen || (location.imageData != nil && UIImage(data: location.imageData!) != nil)
@@ -131,6 +143,7 @@ struct DatenView: View {
                 ImageDetailView(image: image)
             }
         }
+        .hideKeyboardOnTap()
     }
     
     func aktualisiereAlleDaten() {
