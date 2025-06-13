@@ -62,39 +62,36 @@ struct SessionListView: View {
                                     .foregroundColor(.primary)
                                 
                                 ForEach(sessionsInMonth) { session in
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(.systemBackground))
-                                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-                                        
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            // Zeige Gesundheitsdaten nur für Session-Typ "Gehen"
-                                            HStack {
-                                                
-                                                Image(systemName: SessionType.safeFrom(session.sessionType).iconName)
-                                                    .font(.title2)
+                                    NavigationLink(destination: MapView(
+                                        locationsToDisplay: session.locationsArray,
+                                        mapTitle: session.name ?? "Session Details"
+                                    )) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color(.systemBackground))
+                                                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                            
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                HStack {
+                                                    Image(systemName: SessionType.safeFrom(session.sessionType).iconName)
+                                                        .font(.title2)
 
-                                                Text(session.name ?? "Unbenannte Session")
-                                                    .font(.headline)
-                                                    .foregroundColor(.primary)
+                                                    Text(session.name ?? "Unbenannte Session")
+                                                        .font(.headline)
+                                                        .foregroundColor(.primary)
+                                                }
+                                                if let date = session.startTime {
+                                                    Text(date.formatted(date: .abbreviated, time: .shortened))
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
                                             }
-                                            if let date = session.startTime {
-                                                Text(date.formatted(date: .abbreviated, time: .shortened))
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                        .padding()
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        
-                                        NavigationLink("", destination: MapView(
-                                            locationsToDisplay: session.locationsArray,
-                                            mapTitle: session.name ?? "Session Details"
-                                        ))
-                                        .opacity(0)
+                                            .padding()
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        } // end ZStack
+                                        .frame(height: 80)
+                                        .padding(.horizontal)
                                     }
-                                    .frame(height: 80)
-                                    .padding(.horizontal)
                                     .contextMenu {
                                         Button {
                                             selectedSession = session
@@ -111,10 +108,9 @@ struct SessionListView: View {
                                             Label("Löschen", systemImage: "trash")
                                         }
                                     }
-                                }
+                                } // end ForEach
                             }
                         }
-                        
                         
                         // Einzelorte Überschrift als Button
                         Button(action: {
@@ -133,54 +129,53 @@ struct SessionListView: View {
                         // Einzelorte Liste
                         if showLocations {
                             ForEach(filteredStandaloneLocations) { location in
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemBackground))
-                                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-                                    
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Breite: \(location.latitude), Länge: \(location.longitude)")
-                                            .font(.body)
-                                            .foregroundColor(.primary)
+                                NavigationLink(destination: MapView(
+                                    locationsToDisplay: [location],
+                                    mapTitle: location.comment ?? "Gespeicherter Ort"
+                                )) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                                         
-                                        if location.altitude > 0 {
-                                            InfoRow(
-                                                icon: "mountain.2.fill",
-                                                label: "Höhe",
-                                                value: String(format: "%.0f m", location.altitude)
-                                            )
-                                        }
-                                        
-                                        if let date = location.timestamp {
-                                            Text(date.formatted(date: .abbreviated, time: .shortened))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        if let comment = location.comment, !comment.isEmpty {
-                                            Text("🗒️ \(comment)")
-                                                .font(.subheadline)
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text("Breite: \(location.latitude), Länge: \(location.longitude)")
+                                                .font(.body)
                                                 .foregroundColor(.primary)
-                                        }
-                                        
-                                        if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
-                                            Image(uiImage: uiImage)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(height: 150)
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    .padding()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    
-                                    NavigationLink("", destination: MapView(
-                                        locationsToDisplay: [location],
-                                        mapTitle: location.comment ?? "Gespeicherter Ort"
-                                    ))
-                                    .opacity(0)
+                                            
+                                            if location.altitude > 0 {
+                                                InfoRow(
+                                                    icon: "mountain.2.fill",
+                                                    label: "Höhe",
+                                                    value: String(format: "%.0f m", location.altitude)
+                                                )
+                                            }
+                                            
+                                            if let date = location.timestamp {
+                                                Text(date.formatted(date: .abbreviated, time: .shortened))
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            
+                                            if let comment = location.comment, !comment.isEmpty {
+                                                Text("🗒️ \(comment)")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.primary)
+                                            }
+                                            
+                                            if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
+                                                Image(uiImage: uiImage)
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(height: 150)
+                                                    .cornerRadius(8)
+                                            }
+                                        } // end VStack
+                                        .padding()
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    } // end ZStack
+                                    .padding(.horizontal)
                                 }
-                                .padding(.horizontal)
                                 .contextMenu {
                                     Button {
                                         selectedLocation = location
@@ -197,9 +192,9 @@ struct SessionListView: View {
                                         Label("Löschen", systemImage: "trash")
                                     }
                                 }
-                            }
-                        }
-                    }
+                            } // end ForEach
+                        } // end If
+                    } // end LazyVStack
                     .padding(.vertical)
                 }
                 .sheet(isPresented: $showDetailSheet, onDismiss: {
