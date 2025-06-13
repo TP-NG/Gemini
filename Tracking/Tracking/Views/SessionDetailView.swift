@@ -95,21 +95,24 @@ struct SessionDetailView: View {
                     }
                 }
 
-                GroupBox(label: Label("Gesundheit", systemImage: "heart.fill")) {
-                    if let steps = steps {
-                        Label("Schritte: \(steps)", systemImage: "figure.walk")
+                // Zeige Gesundheitsdaten nur für Session-Typ "Gehen"
+                if let sessionType = session.sessionType as? String, sessionType == "Gehen" {
+                    GroupBox(label: Label("Gesundheit", systemImage: "heart.fill")) {
+                        if let steps = steps {
+                            Label("Schritte: \(steps)", systemImage: "figure.walk")
+                                .font(.subheadline)
+                        } else if let error = healthKitError {
+                            Label("Fehler: \(error)", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                                .font(.subheadline)
+                        } else {
+                            HStack {
+                                Label("Schritte: Wird geladen...", systemImage: "hourglass")
+                                Spacer()
+                                ProgressView()
+                            }
                             .font(.subheadline)
-                    } else if let error = healthKitError {
-                        Label("Fehler: \(error)", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                            .font(.subheadline)
-                    } else {
-                        HStack {
-                            Label("Schritte: Wird geladen...", systemImage: "hourglass")
-                            Spacer()
-                            ProgressView()
                         }
-                        .font(.subheadline)
                     }
                 }
 

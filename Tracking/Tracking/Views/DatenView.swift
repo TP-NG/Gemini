@@ -15,51 +15,97 @@ struct DatenView: View {
     @State private var currentPage = 0
     private let itemsPerPage = 20
     
+    @State private var feldName: String = "sessionType"
+    @State private var newValue: String = "Gehen"
+    @State private var whereValue: String = "Hangelar Ost"
+    
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \TrackingSession.startTime, ascending: false)],
+        animation: .default
+    ) private var sessions: FetchedResults<TrackingSession>
+    
     var body: some View {
         NavigationStack {
             
             Toggle("Nur Einträge mit Bild anzeigen", isOn: $nurMitBildAnzeigen)
                 .padding()
             
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Datensatz aktualisieren").font(.headline)
+                
+                TextField("Spaltenname", text: $feldName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                TextField("Neuer Wert", text: $newValue)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                TextField("Where Bedingung", text: $whereValue)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                Button("Aktualisiere") {
+                    aktualisiereAlleDaten()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding()
+            .hideKeyboardOnTap()
+            
             let filteredLocations = locations.filter { location in
                 !nurMitBildAnzeigen || (location.imageData != nil && UIImage(data: location.imageData!) != nil)
             }
+            
             let pagedLocations = Array(filteredLocations.dropFirst(currentPage * itemsPerPage).prefix(itemsPerPage))
             
             List {
-                ForEach(pagedLocations) { location in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(location.timestamp?.formatted() ?? "Unbekanntes Datum")
-                            .font(.headline)
-                        Text(String(format: "%.6f, %.6f", location.latitude, location.longitude))
-                            .font(.subheadline)
-
-                        if let comment = location.comment, !comment.isEmpty {
-                            Text("Kommentar: \(comment)")
-                                .font(.body)
-                        }
-
-                        if let imageData = location.imageData,
-                           let uiImage = UIImage(data: imageData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 150)
-                                .cornerRadius(8)
-                                .onTapGesture {
-                                    selectedImage = uiImage
-                                }
-                            Button("Bild speichern") {
-                                UIImageWriteToSavedPhotosAlbum(uiImage, nil, nil, nil)
-                            }
-                            .font(.caption)
+                ForEach(sessions) { session in
+                    Section(header: Text(session.name ?? "Unbenannte Session")) {
+                        if let id = session.id {
+                            Text(id.uuidString).font(.footnote)
                         } else {
-                            Text("Kein Bild vorhanden")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            Text("Keine ID verfügbar").font(.footnote)
+                        }
+                        
+                        let zugeordneteOrte = pagedLocations.filter { $0.session == session }
+                        ForEach(zugeordneteOrte) { location in
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let id = location.id {
+                                    Text(id.uuidString).font(.footnote)
+                                } else {
+                                    Text("Keine ID verfügbar").font(.footnote)
+                                }
+                                Text(location.timestamp?.formatted() ?? "Unbekanntes Datum")
+                                    .font(.headline)
+                                Text(String(format: "%.6f, %.6f", location.latitude, location.longitude))
+                                    .font(.subheadline)
+
+                                if let comment = location.comment, !comment.isEmpty {
+                                    Text("Kommentar: \(comment)")
+                                        .font(.body)
+                                }
+
+                                if let imageData = location.imageData,
+                                   let uiImage = UIImage(data: imageData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxHeight: 150)
+                                        .cornerRadius(8)
+                                        .onTapGesture {
+                                            selectedImage = uiImage
+                                        }
+                                    Button("Bild speichern") {
+                                        UIImageWriteToSavedPhotosAlbum(uiImage, nil, nil, nil)
+                                    }
+                                    .font(.caption)
+                                } else {
+                                    Text("Kein Bild vorhanden")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                            .padding(.vertical, 8)
                         }
                     }
-                    .padding(.vertical, 8)
                 }
             }
             HStack {
@@ -84,6 +130,26 @@ struct DatenView: View {
             .sheet(item: $selectedImage) { image in
                 ImageDetailView(image: image)
             }
+        }
+    }
+    
+    func aktualisiereAlleDaten() {
+        let context = PersistenceController.shared.container.viewContext
+        for session in sessions where session.name?.trimmingCharacters(in: .whitespacesAndNewlines) == whereValue {
+            switch feldName {
+            case "comment":
+                session.comment = newValue
+            case "sessionType":
+                session.sessionType = newValue
+            default:
+                continue
+            }
+        }
+        do {
+            try context.save()
+            print("Daten erfolgreich gespeichert.")
+        } catch {
+            print("Fehler beim Speichern: \(error.localizedDescription)")
         }
     }
 }

@@ -11,6 +11,12 @@ import CoreData
 import AudioToolbox
 
 struct LiveLocationView: View {
+    enum SessionType: String, CaseIterable, Identifiable {
+        case gehen = "Gehen"
+        case motorisiert = "Motorisiert"
+        
+        var id: String { rawValue }
+    }
     @StateObject var locationManager = LiveLocationManager()
     @Environment(\.managedObjectContext) private var viewContext
     @State private var isTrackingActive: Bool = false // Zustand, ob eine Tracking-Session aktiv ist
@@ -18,6 +24,7 @@ struct LiveLocationView: View {
 
     @State private var sessionName: String = ""
     @State private var coment: String = ""
+    @State private var selectedSessionType: SessionType = .gehen
     
     @State private var previewImage: UIImage? = nil // Placeholder für später
     
@@ -81,6 +88,35 @@ struct LiveLocationView: View {
                         Text("Session Name:")
                         TextField("Geben Sie einen Namen für Ihre Session ein...", text: $sessionName)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Aktivitätstyp:")
+                            .font(.headline)
+                        HStack {
+                            ForEach(SessionType.allCases) { type in
+                                Button(action: {
+                                    selectedSessionType = type
+                                }) {
+                                    VStack {
+                                        Image(systemName: type == .gehen ? "figure.walk" : "car.fill")
+                                            .font(.title2)
+                                        Text(type.rawValue)
+                                            .font(.subheadline)
+                                    }
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(selectedSessionType == type ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(selectedSessionType == type ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
                     }
                     .padding(.horizontal)
                     
@@ -230,6 +266,7 @@ struct LiveLocationView: View {
         let newSession = TrackingSession(context: viewContext)
         newSession.id = UUID()
         newSession.startTime = Date()
+        newSession.sessionType = selectedSessionType.rawValue
         currentSession = newSession
 
         locationManager.start() // 📍 Damit GPS wirklich startet
