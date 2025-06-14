@@ -12,7 +12,8 @@ struct SessionListView: View {
     @State private var selectedSession: TrackingSession?
     @State private var selectedLocation: SavedLocation?
     @State private var showDetailSheet = false
-    
+    @State private var editSession = false
+    @State private var editLocation = false
     @State private var showSessions = false
     @State private var showLocations = false
     
@@ -97,7 +98,14 @@ struct SessionListView: View {
                                             selectedSession = session
                                             showDetailSheet = true
                                         } label: {
-                                            Label("Details", systemImage: "info.circle")
+                                            Label("Details", systemImage: "square.and.pencil")
+                                        }
+                                        
+                                        Button {
+                                            selectedSession = session
+                                            editSession = true
+                                        } label: {
+                                            Label("Bearbeiten", systemImage: "square.and.pencil")
                                         }
                                         
                                         Button(role: .destructive) {
@@ -184,6 +192,13 @@ struct SessionListView: View {
                                         Label("Details", systemImage: "info.circle")
                                     }
                                     
+                                    Button {
+                                        selectedLocation = location
+                                        editLocation = true
+                                    } label: {
+                                        Label("Bearbeiten", systemImage: "square.and.pencil")
+                                    }
+                                    
                                     Button(role: .destructive) {
                                         if let index = standaloneLocations.firstIndex(of: location) {
                                             deleteStandaloneLocations(offsets: IndexSet(integer: index))
@@ -196,6 +211,20 @@ struct SessionListView: View {
                         } // end If
                     } // end LazyVStack
                     .padding(.vertical)
+                }
+                .sheet(isPresented: $editSession, onDismiss: {
+                    selectedSession = nil
+                }) {
+                    if let session = selectedSession {
+                        SessionEditView(session: session)
+                    }
+                }
+                .sheet(isPresented: $editLocation, onDismiss: {
+                    selectedSession = nil
+                }) {
+                    if let location = selectedLocation {
+                        LocationEditView(location: location)
+                    }
                 }
                 .sheet(isPresented: $showDetailSheet, onDismiss: {
                     selectedSession = nil
