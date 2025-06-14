@@ -53,6 +53,12 @@ struct LiveLocationView: View {
                             Text(String(format: "%.6f", locationManager.currentLocation?.coordinate.longitude ?? 0.0))
                         }
                         
+                        VStack(alignment: .leading) {
+                            Text("Kommentar:")
+                            TextField("Notitz zum Standord", text: $coment)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                        
                         // Single Point
                         Button(action: {
                             if let currentLocation = locationManager.currentLocation {
@@ -65,12 +71,6 @@ struct LiveLocationView: View {
                                 .background(Color.green.opacity(0.8))
                                 .foregroundColor(.white)
                                 .cornerRadius(8)
-                        }
-                        
-                        VStack(alignment: .leading) {
-                            Text("Kommentar:")
-                            TextField("Notitz zum Standord", text: $coment)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
                         }
                     }
                     .padding()

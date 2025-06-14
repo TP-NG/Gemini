@@ -6,13 +6,14 @@
 import Foundation
 
 enum SessionType: String, CaseIterable, Identifiable {
+    
+    case auto = "Auto"
     case gehen = "Gehen"
     case laufen = "Laufen"
     case bahn = "Bahn"
     case bus = "Bus"
     case fahrad = "Fahrad"
     case fliegen = "Fliegen"
-    case auto = "Auto"
     case unknown = "Unknown" // Neuer Fall für undefinierte Werte
     
     var id: String { rawValue }

@@ -11,6 +11,7 @@ struct YearMonthPickerView: View {
     @Namespace private var animation
     
     @State private var showMonthGrid = true
+    @State private var showYearPicker = false
     
     let months: [String] = Calendar.current.shortMonthSymbols
     let columns = [GridItem(.adaptive(minimum: 80))]
@@ -31,33 +32,31 @@ struct YearMonthPickerView: View {
         return formatter.string(from: date)
     }
     
-    var body: some View {
+var body: some View {
+    ZStack(alignment: .top) {
         VStack {
             // Year Picker
-            HStack {
-                Image(systemName: "chevron.left")
-                    .frame(width: 24)
-                    .onTapGesture {
-                        if let newDate = Calendar.current.date(byAdding: .year, value: -1, to: selectedDate) {
-                            selectedDate = newDate
-                        }
+            HStack(spacing: 8) {
+                Button(action: {
+                    showYearPicker.toggle()
+                }) {
+                    HStack(spacing: 4) {
+                        Text(monthYearString(from: selectedDate))
+                            .fontWeight(.bold)
+                        Image(systemName: "calendar")
                     }
-                
-                Text(monthYearString(from: selectedDate))
-                    .fontWeight(.bold)
-                    .onTapGesture {
-                        withAnimation(.easeInOut) {
-                            showMonthGrid.toggle()
-                        }
+                    .contentShape(Rectangle())
+                }
+
+                Button(action: {
+                    withAnimation(.easeInOut) {
+                        showMonthGrid.toggle()
                     }
-                
-                Image(systemName: "chevron.right")
-                    .frame(width: 24)
-                    .onTapGesture {
-                        if let newDate = Calendar.current.date(byAdding: .year, value: 1, to: selectedDate) {
-                            selectedDate = newDate
-                        }
-                    }
+                }) {
+                    Image(systemName: showMonthGrid ? "chevron.up" : "chevron.down")
+                        .rotationEffect(.degrees(showMonthGrid ? 0 : 180))
+                        .animation(.easeInOut(duration: 0.2), value: showMonthGrid)
+                }
             }
             .padding(15)
             
@@ -99,8 +98,47 @@ struct YearMonthPickerView: View {
                         }
                     }
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+
+        if showYearPicker {
+            VStack(spacing: 0) {
+                Picker("Jahr", selection: Binding(
+                    get: {
+                        Calendar.current.component(.year, from: selectedDate)
+                    },
+                    set: { newYear in
+                        var components = Calendar.current.dateComponents([.month], from: selectedDate)
+                        components.year = newYear
+                        components.day = 1
+                        if let newDate = Calendar.current.date(from: components) {
+                            selectedDate = newDate
+                        }
+                        withAnimation {
+                            showYearPicker = false
+                        }
+                    }
+                )) {
+                    ForEach(2000...2100, id: \.self) { year in
+                        Text("\(year)").tag(year)
+                    }
+                }
+                .labelsHidden()
+                .frame(height: 120)
+                .clipped()
+                .pickerStyle(.wheel)
+                .zIndex(1)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                        .shadow(radius: 4)
+                )
+            }
+            .padding(.top, 50)
+            .padding(.horizontal)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
     }
+}
 }
