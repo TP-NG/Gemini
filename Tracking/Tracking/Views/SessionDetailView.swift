@@ -7,6 +7,22 @@ import SwiftUI
 import CoreData
 import HealthKit // HealthKit importieren
 
+fileprivate class ImageLoader {
+    static let shared = ImageLoader()
+    private let cache = NSCache<NSData, UIImage>()
+
+    func image(from data: Data) -> Image? {
+        let nsData = data as NSData
+        if let cached = cache.object(forKey: nsData) {
+            return Image(uiImage: cached)
+        } else if let uiImage = UIImage(data: data) {
+            cache.setObject(uiImage, forKey: nsData)
+            return Image(uiImage: uiImage)
+        }
+        return nil
+    }
+}
+
 struct SessionDetailView: View {
     var session: TrackingSession
     
@@ -93,21 +109,23 @@ struct SessionDetailView: View {
                     }
                 }
                 
-                // Horizontale ScrollView für Bild-Thumbnails (Ribbon)
+                // Optimierte horizontale ScrollView für Bild-Thumbnails (Ribbon)
                 if let locations = session.locations as? Set<SavedLocation> {
                     let imageLocations = locations.filter { $0.imageData != nil }
                     if !imageLocations.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(Array(imageLocations), id: \.self) { location in
-                                    if let data = location.imageData,
-                                       let uiImage = UIImage(data: data) {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 80, height: 80)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.3)))
+                            LazyHStack(spacing: 10) {
+                                ForEach(Array(imageLocations), id: \.objectID) { location in
+                                    if let data = location.imageData {
+                                        // UIImage nur dann erstellen, wenn es gebraucht wird
+                                        if let image = ImageLoader.shared.image(from: data) {
+                                            image
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 80, height: 80)
+                                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.3)))
+                                        }
                                     }
                                 }
                             }

@@ -112,6 +112,7 @@ struct LiveLocationView: View {
                                         )
                                     }
                                     .buttonStyle(PlainButtonStyle())
+                                    .disabled(isTrackingActive)
                                 }
                             }
                             .padding(.vertical, 4)
@@ -188,14 +189,29 @@ struct LiveLocationView: View {
                     
                     // Kamera Button + Vorschau
                     VStack(spacing: 10) {
-                        // Kamera Button
-                        Button(action: { showCamera = true }) {
-                            Label("Foto aufnehmen", systemImage: "camera")
-                                .frame(maxWidth: .infinity)  // Für bessere Ausrichtung
+                        HStack {
+                            // Kamera Button
+                            Button(action: { showCamera = true }) {
+                                Label("Foto aufnehmen", systemImage: "camera")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .controlButton(color: .blue, isDisabled: false)
+                            .padding(.leading, 20)
+                            .cornerRadius(10)
+                            
+                            Button(action: {
+                                     if let currentLocation = locationManager.currentLocation {
+                                        saveCurrentLocation(location: currentLocation)
+                                    }
+                            }) {
+                                Image(systemName: "square.and.arrow.down")
+                                    .frame(height: 46)
+                            }
+                            .disabled(previewImage == nil)
+                            .buttonStyle(.borderedProminent)
+                            .help("Bild speichern")
                         }
-                        .controlButton(color: .blue, isDisabled: false)
-                        .padding()
-                        .cornerRadius(10)
+                        .padding(.trailing, 20) // <-- Abstand vom rechten Bildschirmrand
                         
                         // Preview-Bereich mit fester Größe
                         Group {

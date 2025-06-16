@@ -10,7 +10,7 @@ struct YearMonthPickerView: View {
     
     @Namespace private var animation
     
-    @State private var showMonthGrid = true
+    @State private var showMonthGrid = false
     @State private var showYearPicker = false
     
     let months: [String] = Calendar.current.shortMonthSymbols
